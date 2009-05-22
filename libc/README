@@ -6,7 +6,8 @@ following additions/changes:
 - no support for locales
 - no support for wide chars (i.e. multi-byte characters)
 - its own smallish implementation of pthreads based on Linux futexes
-- support for x86, ARM and ARM thumb CPU instruction sets and kernel interfaces
+- support for MIPS, x86, ARM and ARM thumb CPU instruction sets and
+  kernel interfaces
 
 Bionic is released under the standard 3-clause BSD License
 
@@ -35,14 +36,14 @@ by doing the following:
 
    return_type  funcname:syscall_name(parameters)  syscall_number
 
-- additionally, if the syscall number is different between ARM and x86, use:
+- additionally, if the syscall number is different between ARM, x86, MIPS use:
 
-   return_type  funcname[:syscall_name](parameters)   arm_number,x86_number
+   return_type  funcname[:syscall_name](parameters)   arm_number,x86_number, mips_number
 
 - a syscall number can be -1 to indicate that the syscall is not implemented on
   a given platform, for example:
 
-   void   __set_tls(void*)   arm_number,-1
+   void   __set_tls(void*)   arm_number,-1,mips_number
 
 
 the comments in SYSCALLS.TXT contain more information about the line format
