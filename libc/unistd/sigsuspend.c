@@ -27,6 +27,7 @@
  */
 #include <signal.h>
 
+#ifndef __mips__
 extern int __sigsuspend(int, int, unsigned int);
 
 int sigsuspend(const sigset_t *_mask)
@@ -34,4 +35,11 @@ int sigsuspend(const sigset_t *_mask)
     unsigned int    mask = (unsigned int)*_mask;
 
 	return __sigsuspend(0, 0, mask);
+#else
+extern int __sigsuspend(const sigset_t *);
+
+int sigsuspend(const sigset_t *_mask)
+{
+	return __sigsuspend(_mask);
+#endif
 }

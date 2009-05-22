@@ -53,6 +53,21 @@ int sigwait(const sigset_t *set, int *sig)
       sigset_t       dummy_sigset;
     } u;
 
+#ifdef __mips__
+    u.dummy_sigset = *set;
+    for (;;)
+    {
+     /* __rt_sigtimedwait can return EAGAIN or EINTR, we need to loop
+      * around them since sigwait is only allowed to return EINVAL
+      */
+      ret = __rt_sigtimedwait ( &u.dummy_sigset, NULL, NULL, sizeof(u.dummy_sigset));
+      if (ret >= 0)
+        break;
+
+      if (errno != EAGAIN && errno != EINTR)
+        return errno;
+    }
+#else
     u.kernel_sigset[0] = *set;
     u.kernel_sigset[1] = 0;  /* no real-time signals supported ? */
     for (;;)
@@ -67,6 +82,7 @@ int sigwait(const sigset_t *set, int *sig)
       if (errno != EAGAIN && errno != EINTR)
         return errno;
     }
+#endif
 
     *sig = ret;
     return 0;
