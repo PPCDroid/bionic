@@ -139,16 +139,33 @@ struct soinfo
     unsigned ARM_exidx_count;
 #endif
 
+#ifdef ANDROID_MIPS_LINKER
+	/* Information for GOT relocating. */
+	unsigned mips_gotlocnum;
+	unsigned mips_gotsym;
+	unsigned mips_symtabno;
+#endif
+
     unsigned refcount;
     struct link_map linkmap;
 };
 
 
 extern soinfo libdl_info;
+extern int debug_verbosity;
+extern int pid;
+extern Elf32_Sym *_do_lookup_in_so(soinfo *si, const char *name,
+							unsigned *elf_hash);
+extern Elf32_Sym * _do_lookup(soinfo *user_si, const char *name,
+							unsigned *base);
 
-/* these must all be powers of two */
+#ifdef __mips__
+#define LIBBASE 0x40000000
+#define LIBLAST 0x50000000
+#else
 #define LIBBASE 0x80000000
 #define LIBLAST 0x90000000
+#endif
 #define LIBINC  0x00100000
 
 
@@ -166,6 +183,10 @@ extern soinfo libdl_info;
 #define R_386_GLOB_DAT   6
 #define R_386_JUMP_SLOT  7
 #define R_386_RELATIVE   8
+
+#elif defined(ANDROID_MIPS_LINKER)
+
+#define R_MIPS_REL32	3
 
 #endif /* ANDROID_*_LINKER */
 
@@ -209,8 +230,12 @@ const char *linker_get_error(void);
 #ifdef ANDROID_ARM_LINKER 
 typedef long unsigned int *_Unwind_Ptr;
 _Unwind_Ptr dl_unwind_find_exidx(_Unwind_Ptr pc, int *pcount);
-#elif defined(ANDROID_X86_LINKER)
+#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_MIPS_LINKER)
 int dl_iterate_phdr(int (*cb)(struct dl_phdr_info *, size_t, void *), void *);
+#endif
+
+#ifdef ANDROID_MIPS_LINKER 
+void process_got(soinfo *si);
 #endif
 
 #endif

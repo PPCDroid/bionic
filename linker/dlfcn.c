@@ -131,14 +131,14 @@ int dlclose(void *handle)
 #define ANDROID_LIBDL_STRTAB \
                       "dlopen\0dlclose\0dlsym\0dlerror\0dl_unwind_find_exidx\0"
 
-#elif defined(ANDROID_X86_LINKER)
+#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_MIPS_LINKER)
 //                     0000000 00011111 111112 22222222 2333333333344444
 //                     0123456 78901234 567890 12345678 9012345678901234
 #define ANDROID_LIBDL_STRTAB \
                       "dlopen\0dlclose\0dlsym\0dlerror\0dl_iterate_phdr\0"
 
 #else /* !defined(ANDROID_ARM_LINKER) && !defined(ANDROID_X86_LINKER) */
-#error Unsupported architecture. Only ARM and x86 are presently supported.
+#error Unsupported architecture.
 #endif
 
 
@@ -175,7 +175,7 @@ static Elf32_Sym libdl_symtab[] = {
       st_info: STB_GLOBAL << 4,
       st_shndx: 1,
     },
-#elif defined(ANDROID_X86_LINKER)
+#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_MIPS_LINKER)
     { st_name: 29,
       st_value: (Elf32_Addr) &dl_iterate_phdr,
       st_info: STB_GLOBAL << 4,

@@ -4,18 +4,27 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES:= \
 	arch/$(TARGET_ARCH)/begin.S \
 	linker.c \
+	arch/$(TARGET_ARCH)/reloc_library.c \
 	rt.c \
 	dlfcn.c \
 	debugger.c \
 	ba.c
 
+ifeq ($(TARGET_ARCH),mips)
+LINKER_TEXT_BASE := 0x00000820
+else
 LINKER_TEXT_BASE := 0xB0000100
+endif
 
 # The maximum size set aside for the linker, from
 # LINKER_TEXT_BASE rounded down to a megabyte.
 LINKER_AREA_SIZE := 0x01000000
 
+ifeq ($(TARGET_ARCH),mips)
+LOCAL_LDFLAGS = -Wl,-T$(LOCAL_PATH)/arch/mips/linker.lds
+else
 LOCAL_LDFLAGS := -Wl,-Ttext,$(LINKER_TEXT_BASE)
+endif
 
 LOCAL_CFLAGS += -DPRELINK
 LOCAL_CFLAGS += -DLINKER_TEXT_BASE=$(LINKER_TEXT_BASE)
@@ -23,7 +32,7 @@ LOCAL_CFLAGS += -DLINKER_AREA_SIZE=$(LINKER_AREA_SIZE)
 
 # we need to access the Bionic private header <bionic_tls.h>
 # in the linker
-LOCAL_CFLAGS += -I$(LOCAL_PATH)/../libc/private
+LOCAL_CFLAGS += -I$(LOCAL_PATH)/../libc/private -I$(LOCAL_PATH)
 
 ifeq ($(TARGET_ARCH),arm)
 LOCAL_CFLAGS += -DANDROID_ARM_LINKER
@@ -31,7 +40,11 @@ else
   ifeq ($(TARGET_ARCH),x86)
     LOCAL_CFLAGS += -DANDROID_X86_LINKER
   else
-    $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+    ifeq ($(TARGET_ARCH),mips)
+      LOCAL_CFLAGS += -DANDROID_MIPS_LINKER
+    else
+      $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+    endif
   endif
 endif
 

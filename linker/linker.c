@@ -90,8 +90,8 @@ static soinfo *sonext = &libdl_info;
 static char ldpaths_buf[LDPATH_BUFSIZE];
 static const char *ldpaths[LDPATH_MAX + 1];
 
-int debug_verbosity;
-static int pid;
+int debug_verbosity=100;
+int pid;
 
 #if STATS
 struct _link_stats linker_stats;
@@ -345,7 +345,7 @@ _Unwind_Ptr dl_unwind_find_exidx(_Unwind_Ptr pc, int *pcount)
    *pcount = 0;
     return NULL;
 }
-#elif defined(ANDROID_X86_LINKER)
+#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_MIPS_LINKER)
 /* Here, we only have to provide a callback to iterate across all the
  * loaded libraries. gcc_eh does the rest. */
 int
@@ -414,7 +414,7 @@ static unsigned elfhash(const char *_name)
     return h;
 }
 
-static Elf32_Sym *
+Elf32_Sym *
 _do_lookup_in_so(soinfo *si, const char *name, unsigned *elf_hash)
 {
     if (*elf_hash == 0)
@@ -429,7 +429,7 @@ Elf32_Sym *lookup_in_library(soinfo *si, const char *name)
     return _do_lookup_in_so(si, name, &unused);
 }
 
-static Elf32_Sym *
+Elf32_Sym *
 _do_lookup(soinfo *user_si, const char *name, unsigned *base)
 {
     unsigned elf_hash = 0;
@@ -501,7 +501,6 @@ static int _open_lib(const char *name)
         if ((fd = open(name, O_RDONLY)) >= 0)
             return fd;
     }
-
     return -1;
 }
 
@@ -1144,6 +1143,7 @@ unsigned unload_library(soinfo *si)
     return si->refcount;
 }
 
+#if 0
 /* TODO: don't use unsigned for addrs below. It works, but is not
  * ideal. They should probably be either uint32_t, Elf32_Addr, or unsigned
  * long.
@@ -1299,7 +1299,7 @@ static int reloc_library(soinfo *si, Elf32_Rel *rel, unsigned count)
     }
     return 0;
 }
-
+#endif
 
 /* Please read the "Initialization and Termination functions" functions.
  * of the linker design note in bionic/linker/README.TXT to understand
@@ -1462,6 +1462,7 @@ static int link_image(soinfo *si, unsigned wr_offset)
     unsigned *d;
     Elf32_Phdr *phdr = si->phdr;
     int phnum = si->phnum;
+    extern int reloc_library(soinfo *si, Elf32_Rel *rel, unsigned count);
 
     INFO("[ %5d linking %s ]\n", pid, si->name);
     DEBUG("%5d si->base = 0x%08x si->flags = 0x%08x\n", pid,
@@ -1574,10 +1575,22 @@ static int link_image(soinfo *si, unsigned wr_offset)
             /* Save this in case we decide to do lazy binding. We don't yet. */
             si->plt_got = (unsigned *)(si->base + *d);
             break;
+#ifdef ANDROID_MIPS_LINKER
+	case DT_MIPS_LOCAL_GOTNO:  /* Save the number of local GOT entries */
+	    si->mips_gotlocnum = *d;
+	    break;
+	case DT_MIPS_GOTSYM:	/* Save the GOT sym index in DYNSYM */
+	    si->mips_gotsym = *d;
+	    break;
+	case DT_MIPS_SYMTABNO:	/* Total number of symbol table entries */
+	    si->mips_symtabno = *d;
+	    break;
+#else
         case DT_DEBUG:
             // Set the DT_DEBUG entry to the addres of _r_debug for GDB
             *d = (int) &_r_debug;
             break;
+#endif
         case DT_RELA:
             DL_ERR("%5d DT_RELA not supported", pid);
             goto fail;
@@ -1659,6 +1672,10 @@ static int link_image(soinfo *si, unsigned wr_offset)
         if(reloc_library(si, si->rel, si->rel_count))
             goto fail;
     }
+
+#ifdef ANDROID_MIPS_LINKER 
+    process_got(si);
+#endif
 
     si->flags |= FLAG_LINKED;
     DEBUG("[ %5d finished linking %s ]\n", pid, si->name);
