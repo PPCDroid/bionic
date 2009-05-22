@@ -7,7 +7,7 @@ from utils import *
 
 # the list of supported architectures
 #
-kernel_archs = [ 'arm', 'x86' ]
+kernel_archs = [ 'arm', 'x86', 'mips' ]
 
 # the list of include directories that belong to the kernel
 # tree. used when looking for sources...
