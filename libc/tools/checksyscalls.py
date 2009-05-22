@@ -69,6 +69,7 @@ syscalls = parser.syscalls
 re_nr_line       = re.compile( r"#define __NR_(\w*)\s*\(__NR_SYSCALL_BASE\+\s*(\w*)\)" )
 re_nr_clock_line = re.compile( r"#define __NR_(\w*)\s*\(__NR_timer_create\+(\w*)\)" )
 re_arm_nr_line   = re.compile( r"#define __ARM_NR_(\w*)\s*\(__ARM_NR_BASE\+\s*(\w*)\)" )
+re_mips_line     = re.compile( r"#define __NR_(\w*)\s*\(__NR_Linux \+\s*(\w*)\)" )
 re_x86_line      = re.compile( r"#define __NR_(\w*)\s*([0-9]*)" )
 
 # now read the Linux arm header
@@ -89,6 +90,21 @@ def process_nr_line(line,dict):
         #print "%s = %s" % (m.group(1), m.group(2))
         dict["ARM_"+m.group(1)] = int(m.group(2)) + 0x0f0000
         return
+
+    m = re_mips_line.match(line)
+    if m:
+	# MIPS has multiple ABIs defined in the unistd.h.  We only want
+	# the first o32 syscalls.  If we find it already in the object, just
+	# skip it.
+        if not dict.has_key(m.group(1)):
+
+        # try block because the ARM header has some #define _NR_XXXXX  /* nothing */
+            try:
+                dict[m.group(1)] = int(m.group(2))
+                #print "%s = %s" % (m.group(1), m.group(2))
+            except:
+                pass
+            return
 
     m = re_x86_line.match(line)
     if m:
@@ -112,6 +128,7 @@ def process_header(header_file,dict):
 
 arm_dict = {}
 x86_dict = {}
+mips_dict = {}
 
 
 # remove trailing slash and '/include' from the linux_root, if any
@@ -142,8 +159,16 @@ if not os.path.exists(x86_unistd):
         print "maybe using a different set of kernel headers might help"
         sys.exit(1)
 
+mips_unistd = linux_root + "/include/asm-mips/unistd.h"
+if not os.path.exists(mips_unistd):
+    print "WEIRD: could not locate the MIPS unistd.h header file"
+    print "tried searching in '%s'" % mips_unistd
+    print "maybe using a different set of kernel headers might help"
+    sys.exit(1)
+
 process_header( linux_root+"/include/asm-arm/unistd.h", arm_dict )
 process_header( x86_unistd, x86_dict )
+process_header( mips_unistd, mips_dict )
 
 # now perform the comparison
 errors = 0
@@ -167,6 +192,17 @@ for sc in syscalls:
             errors += 1
         elif x86_dict[sc_name] != sc_id2:
             print "x86 syscall %s should be %d instead of %d !!" % (sc_name, x86_dict[sc_name], sc_id2)
+            errors += 1
+
+for sc in syscalls:
+    sc_name = sc["name"]
+    sc_id3  = sc["id3"]
+    if sc_id3 >= 0:
+        if not mips_dict.has_key(sc_name):
+            print "mips syscall %s not defined !!" % sc_name
+            errors += 1
+        elif mips_dict[sc_name] != sc_id3:
+            print "mips syscall %s should be %d instead of %d !!" % (sc_name, mips_dict[sc_name], sc_id3)
             errors += 1
 
 if errors == 0:
