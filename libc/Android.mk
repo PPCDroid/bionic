@@ -314,7 +314,7 @@ libc_arch_static_src_files := \
 
 libc_arch_dynamic_src_files := \
 	arch-arm/bionic/exidx_dynamic.c
-else # !arm
+endif # arm
 
 ifeq ($(TARGET_ARCH),x86)
 libc_common_src_files += \
@@ -342,7 +342,31 @@ libc_arch_static_src_files := \
 
 libc_arch_dynamic_src_files :=
 endif # x86
-endif # !arm
+
+ifeq ($(TARGET_ARCH),mips)
+libc_common_src_files += \
+	arch-mips/bionic/__get_tls.c \
+	arch-mips/bionic/__get_sp.c \
+	arch-mips/bionic/atomics_mips.S \
+	arch-mips/bionic/clone.S \
+	arch-mips/bionic/ffs.S \
+	arch-mips/bionic/_exit_with_stack_teardown.S \
+	arch-mips/bionic/setjmp.S \
+	arch-mips/bionic/_setjmp.S \
+	arch-mips/bionic/vfork.S \
+	arch-mips/string/bzero.S \
+	arch-mips/string/memset.c \
+	arch-mips/string/memcmp.c \
+	arch-mips/string/memcpy.S \
+	arch-mips/string/strlen.S \
+	bionic/pthread.c \
+	bionic/pthread-timers.c \
+	bionic/ptrace.c
+
+# this is needed for static versions of libc
+libc_arch_static_src_files := \
+        arch-mips/bionic/dl_iterate_phdr_static.c
+endif # mips
 
 # Define some common cflags
 # ========================================================
@@ -369,6 +393,11 @@ ifeq ($(TARGET_ARCH),arm)
 else # !arm
   ifeq ($(TARGET_ARCH),x86)
     libc_crt_target_cflags := -m32
+  else
+    ifeq ($(TARGET_ARCH),mips)
+      libc_crt_target_cflags := $(MIPS_ENDIAN) \
+                                -I$(LOCAL_PATH)/kernel/arch-$(TARGET_ARCH)
+    endif
   endif # x86
 endif # !arm
 
@@ -401,6 +430,23 @@ $(GEN): $(LOCAL_PATH)/arch-$(TARGET_ARCH)/bionic/crtend_so.S
 	$(TARGET_CC) $(libc_crt_target_cflags) -o $@ -c $<
 ALL_GENERATED_SOURCES += $(GEN)
 endif # TARGET_ARCH == x86
+
+
+ifeq ($(TARGET_ARCH),mips)
+crt_begin_end_so_target_cflags := $(MIPS_ENDIAN) \
+				  -I$(LOCAL_PATH)/kernel/arch-$(TARGET_ARCH)
+GEN := $(TARGET_OUT_STATIC_LIBRARIES)/crtbegin_so.o
+$(GEN): $(LOCAL_PATH)/arch-$(TARGET_ARCH)/bionic/crtbegin_so.S
+	@mkdir -p $(dir $@)
+	$(TARGET_CC) $(crt_begin_end_so_target_cflags) -o $@ -c $<
+ALL_GENERATED_SOURCES += $(GEN)
+
+GEN := $(TARGET_OUT_STATIC_LIBRARIES)/crtend_so.o
+$(GEN): $(LOCAL_PATH)/arch-$(TARGET_ARCH)/bionic/crtend_so.S
+	@mkdir -p $(dir $@)
+	$(TARGET_CC) $(crt_begin_end_so_target_cflags) -o $@ -c $<
+ALL_GENERATED_SOURCES += $(GEN)
+endif # TARGET_ARCH == mips
 
 
 GEN := $(TARGET_OUT_STATIC_LIBRARIES)/crtbegin_static.o
@@ -479,6 +525,7 @@ LOCAL_SRC_FILES := \
 	bionic/dlmalloc.c \
 	bionic/libc_init_static.c
 
+
 LOCAL_CFLAGS := $(libc_common_cflags)
 
 ifeq ($(WITH_MALLOC_CHECK_LIBC_A),true)
@@ -534,6 +581,10 @@ include $(CLEAR_VARS)
 LOCAL_CFLAGS := \
 	$(libc_common_cflags) \
 	-DMALLOC_LEAK_CHECK
+
+ifeq ($(TARGET_ARCH),mips)
+  LOCAL_CFLAGS += -DHAVE_UNWIND_CONTEXT_STRUCT
+endif
 
 LOCAL_C_INCLUDES := $(libc_common_c_includes)
 
