@@ -34,8 +34,13 @@
 
 __BEGIN_DECLS
 
+#ifdef __mips__
+#define SOCK_DGRAM       1
+#define SOCK_STREAM      2
+#else
 #define SOCK_STREAM      1
 #define SOCK_DGRAM       2
+#endif
 #define SOCK_RAW         3
 #define SOCK_RDM         4
 #define SOCK_SEQPACKET   5
