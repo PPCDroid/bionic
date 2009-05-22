@@ -4,7 +4,7 @@ import sys, os, commands, string
 
 # support Bionic architectures, add new ones as appropriate
 #
-bionic_archs = [ "arm", "x86" ]
+bionic_archs = [ "arm", "x86" , "mips" ]
 
 # basic debugging trace support
 # call D_setlevel to set the verbosity level
@@ -139,7 +139,7 @@ class SysCallsTxtParser:
         """ parse a syscall spec line.
 
         line processing, format is
-           return type    func_name[:syscall_name[:call_id]] ( [paramlist] )   (syscall_number[,syscall_number_x86])|stub
+           return type    func_name[:syscall_name[:call_id]] ( [paramlist] )   (syscall_number[,syscall_number_x86[,syscall_mips]])|stub
         """
         pos_lparen = line.find('(')
         E          = self.E
@@ -194,6 +194,7 @@ class SysCallsTxtParser:
         if number == "stub":
             syscall_id  = -1
             syscall_id2 = -1
+            syscall_id3 = -1
         else:
             try:
                 if number[0] == '#':
@@ -201,14 +202,18 @@ class SysCallsTxtParser:
                 numbers = string.split(number,',')
                 syscall_id  = int(numbers[0])
                 syscall_id2 = syscall_id
+                syscall_id3 = syscall_id
                 if len(numbers) > 1:
                     syscall_id2 = int(numbers[1])
+                if len(numbers) > 2:
+                    syscall_id3 = int(numbers[2])
             except:
                 E("invalid syscall number in '%s'" % line)
                 return
 
         t = { "id"     : syscall_id,
               "id2"    : syscall_id2,
+              "id3"    : syscall_id3,
               "cid"    : call_id,
               "name"   : syscall_name,
               "func"   : syscall_func,
