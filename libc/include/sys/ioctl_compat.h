@@ -42,6 +42,11 @@
 //#include <sys/ttychars.h>
 //#include <sys/ttydev.h>
 
+/* MIPS and Power Architecture need to silently use the real linux
+ * system interface definitions.
+ */
+#if !defined(__mips__) && !defined(__powerpc__)
+
 struct tchars {
 	char	t_intrc;	/* interrupt */
 	char	t_quitc;	/* quit */
@@ -164,5 +169,7 @@ struct sgttyb {
 #define	OTTYDISC	0
 #define	NETLDISC	1
 #define	NTTYDISC	2
+
+#endif /* !defined(__mips__) && !defined(__powerpc__) */
 
 #endif /* !_SYS_IOCTL_COMPAT_H_ */
