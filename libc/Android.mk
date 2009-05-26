@@ -351,6 +351,7 @@ libc_common_src_files += \
 	arch-mips/bionic/clone.S \
 	arch-mips/bionic/ffs.S \
 	arch-mips/bionic/_exit_with_stack_teardown.S \
+	arch-mips/bionic/pipe.S \
 	arch-mips/bionic/setjmp.S \
 	arch-mips/bionic/_setjmp.S \
 	arch-mips/bionic/vfork.S \

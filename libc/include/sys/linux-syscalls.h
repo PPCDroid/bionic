@@ -421,7 +421,6 @@
 #define __NR_flock                        (__NR_SYSCALL_BASE + 143)
 #define __NR_fchmod                       (__NR_SYSCALL_BASE + 94)
 #define __NR_dup                          (__NR_SYSCALL_BASE + 41)
-#define __NR_pipe                         (__NR_SYSCALL_BASE + 42)
 #define __NR_dup2                         (__NR_SYSCALL_BASE + 63)
 #define __NR__newselect                   (__NR_SYSCALL_BASE + 142)
 #define __NR_ftruncate                    (__NR_SYSCALL_BASE + 93)
