@@ -13,7 +13,7 @@
  * derived systems.
  */
 __bionic_call_ctors:
-	subu	sp, sp, 12
+	subu	sp, sp, 8
 	sw	s0, 0(sp)
 	sw	ra, 4(sp)
 	la	s0, __CTOR_END__
@@ -36,7 +36,7 @@ __bionic_call_ctors:
 	/* we're done */
 	lw	ra, 4(sp)
 	lw	s0, 0(sp)
-	addiu	sp, sp, 12
+	addiu	sp, sp, 8
 	jr	ra
 
 	.section .init
