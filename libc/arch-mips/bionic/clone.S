@@ -102,7 +102,7 @@ LEAF(clone)
 
 	/* We are the child thread.  Call func(arg)
 	*/
-clone child:
+clone_child:
 	lw	t9, -4(sp)	/* Pull funct ptr off new thread stack */
 	lw	a0, -8(sp)	/* Pull arg ptr off new thread stack */
 	jalr	t9
