@@ -80,3 +80,52 @@ err:
     nop
 	.set	reorder
 	END(__pthread_clone)
+
+/* Some Linux native programs need to clone()
+*/
+LEAF(clone)
+	.set noreorder
+	.cpload t9
+
+	sw	a0, -4(a1)	/* Save funct ptr on new thread stack */
+	sw	a3, -8(a1)	/* Save arg ptr on new thread stack */
+	move	a0, a2		/* put flags into arg0 */
+	li v0, __NR_clone
+	syscall
+	.set reorder
+	bne	a3, zero, clone_err	/* not zero is error */
+	nop
+	beq	v0, zero, clone_child	/* equal zero is child */
+	nop
+	jr	ra			/* Back to parent */
+	nop
+
+	/* We are the child thread.  Call func(arg)
+	*/
+clone child:
+	lw	t9, -4(sp)	/* Pull funct ptr off new thread stack */
+	lw	a0, -8(sp)	/* Pull arg ptr off new thread stack */
+	jalr	t9
+
+	/* On thred return, just call exit()
+	*/
+	move	a0, v0
+
+#ifdef __PIC__
+	la	t9, _exit
+	jr	t9
+#else
+	j       _exit
+#endif
+	nop
+
+clone_err:
+#ifdef __PIC__
+    la t9, __set_syscall_errno
+    jr t9
+#else
+    j       __set_syscall_errno
+#endif
+    nop
+	.set	reorder
+	END(clone)
