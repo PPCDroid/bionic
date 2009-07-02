@@ -355,6 +355,7 @@ libc_common_src_files += \
 	arch-mips/bionic/setjmp.S \
 	arch-mips/bionic/_setjmp.S \
 	arch-mips/bionic/vfork.S \
+	arch-mips/bionic/syscall.S \
 	arch-mips/string/bzero.S \
 	arch-mips/string/memset.c \
 	arch-mips/string/memcmp.c \
