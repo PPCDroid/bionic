@@ -65,8 +65,15 @@ void debugger_signal_handler(int n)
         close(s);
     }
 
+#ifdef __arm__
     /* remove our net so we fault for real when we return */
     signal(n, SIG_IGN);
+#else
+    /* A SIG_IGN does not "fault for real" and I don't know why that
+     * was originally done. -- Dan
+     */
+    signal(n, SIG_DFL);
+#endif
 }
 
 void debugger_init()
