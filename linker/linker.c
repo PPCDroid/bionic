@@ -76,11 +76,6 @@
  *   headers provide versions that are negative...
  * - allocate space for soinfo structs dynamically instead of
  *   having a hard limit (64)
- *
- * features to add someday:
- *
- * - dlopen() and friends
- *
 */
 
 
@@ -128,7 +123,7 @@ static char __linker_dl_err_buf[768];
     do {                                                                      \
         snprintf(__linker_dl_err_buf, sizeof(__linker_dl_err_buf),            \
                  "%s[%d]: " fmt, __func__, __LINE__, ##x);                    \
-        ERROR(fmt, ##x);                                                      \
+        ERROR(fmt "\n", ##x);                                                      \
     } while(0)
 
 const char *linker_get_error(void)
@@ -240,7 +235,7 @@ static soinfo *alloc_info(const char *name)
     soinfo *si;
 
     if(strlen(name) >= SOINFO_NAME_LEN) {
-        DL_ERR("%5d library name %s too long\n", pid, name);
+        DL_ERR("%5d library name %s too long", pid, name);
         return 0;
     }
 
@@ -249,7 +244,7 @@ static soinfo *alloc_info(const char *name)
     */
     if (!freelist) {
         if(socount == SO_MAX) {
-            DL_ERR("%5d too many libraries when loading %s\n", pid, name);
+            DL_ERR("%5d too many libraries when loading %s", pid, name);
             return NULL;
         }
         freelist = sopool + socount++;
@@ -285,7 +280,7 @@ static void free_info(soinfo *si)
     }
     if (trav == NULL) {
         /* si was not ni solist */
-        DL_ERR("%5d name %s is not in solist!\n", pid, si->name);
+        DL_ERR("%5d name %s is not in solist!", pid, si->name);
         return;
     }
 
@@ -566,7 +561,7 @@ is_prelinked(int fd, const char *name)
 
     sz = lseek(fd, -sizeof(prelink_info_t), SEEK_END);
     if (sz < 0) {
-        DL_ERR("lseek() failed!\n");
+        DL_ERR("lseek() failed!");
         return 0;
     }
 
@@ -642,7 +637,7 @@ get_lib_extents(int fd, const char *name, void *__hdr, unsigned *total_sz)
 
     TRACE("[ %5d Computing extents for '%s'. ]\n", pid, name);
     if (verify_elf_object(_hdr, name) < 0) {
-        DL_ERR("%5d - %s is not a valid ELF object\n", pid, name);
+        DL_ERR("%5d - %s is not a valid ELF object", pid, name);
         return (unsigned)-1;
     }
 
@@ -670,7 +665,7 @@ get_lib_extents(int fd, const char *name, void *__hdr, unsigned *total_sz)
     }
 
     if ((min_vaddr == 0xffffffff) && (max_vaddr == 0)) {
-        DL_ERR("%5d - No loadable segments found in %s.\n", pid, name);
+        DL_ERR("%5d - No loadable segments found in %s.", pid, name);
         return (unsigned)-1;
     }
 
@@ -707,13 +702,13 @@ static int reserve_mem_region(soinfo *si)
                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (base == MAP_FAILED) {
         DL_ERR("%5d can NOT map (%sprelinked) library '%s' at 0x%08x "
-              "as requested, will try general pool: %d (%s)\n",
+              "as requested, will try general pool: %d (%s)",
               pid, (si->base ? "" : "non-"), si->name, si->base,
               errno, strerror(errno));
         return -1;
     } else if (base != (void *)si->base) {
         DL_ERR("OOPS: %5d %sprelinked library '%s' mapped at 0x%08x, "
-              "not at 0x%08x\n", pid, (si->base ? "" : "non-"),
+              "not at 0x%08x", pid, (si->base ? "" : "non-"),
               si->name, (unsigned)base, si->base);
         munmap(base, si->size);
         return -1;
@@ -750,7 +745,7 @@ alloc_mem_region(soinfo *si)
     }
 
 err:
-    DL_ERR("OOPS: %5d cannot map library '%s'. no vspace available.\n",
+    DL_ERR("OOPS: %5d cannot map library '%s'. no vspace available.",
           pid, si->name);
     return -1;
 }
@@ -810,7 +805,7 @@ load_segments(int fd, void *header, soinfo *si)
                          phdr->p_offset & (~PAGE_MASK));
             if (pbase == MAP_FAILED) {
                 DL_ERR("%d failed to map segment from '%s' @ 0x%08x (0x%08x). "
-                      "p_vaddr=0x%08x p_offset=0x%08x\n", pid, si->name,
+                      "p_vaddr=0x%08x p_offset=0x%08x", pid, si->name,
                       (unsigned)tmp, len, phdr->p_vaddr, phdr->p_offset);
                 goto fail;
             }
@@ -866,7 +861,7 @@ load_segments(int fd, void *header, soinfo *si)
                                   -1, 0);
                 if (extra_base == MAP_FAILED) {
                     DL_ERR("[ %5d - failed to extend segment from '%s' @ 0x%08x"
-                           " (0x%08x) ]\n", pid, si->name, (unsigned)tmp,
+                           " (0x%08x) ]", pid, si->name, (unsigned)tmp,
                           extra_len);
                     goto fail;
                 }
@@ -919,7 +914,7 @@ load_segments(int fd, void *header, soinfo *si)
     /* Sanity check */
     if (total_sz > si->size) {
         DL_ERR("%5d - Total length (0x%08x) of mapped segments from '%s' is "
-              "greater than what was allocated (0x%08x). THIS IS BAD!\n",
+              "greater than what was allocated (0x%08x). THIS IS BAD!",
               pid, total_sz, si->name, si->size);
         goto fail;
     }
@@ -982,23 +977,24 @@ load_library(const char *name)
     int cnt;
     unsigned ext_sz;
     unsigned req_base;
+    const char *bname;
     soinfo *si = NULL;
     Elf32_Ehdr *hdr;
 
     if(fd == -1) {
-        DL_ERR("Library '%s' not found\n", name);
+        DL_ERR("Library '%s' not found", name);
         return NULL;
     }
 
     /* We have to read the ELF header to figure out what to do with this image
      */
     if (lseek(fd, 0, SEEK_SET) < 0) {
-        DL_ERR("lseek() failed!\n");
+        DL_ERR("lseek() failed!");
         goto fail;
     }
 
     if ((cnt = read(fd, &__header[0], PAGE_SIZE)) < 0) {
-        DL_ERR("read() failed!\n");
+        DL_ERR("read() failed!");
         goto fail;
     }
 
@@ -1015,7 +1011,8 @@ load_library(const char *name)
      * same thing would happen if we failed during linking. Configuring the
      * soinfo struct here is a lot more convenient.
      */
-    si = alloc_info(name);
+    bname = strrchr(name, '/');
+    si = alloc_info(bname ? bname + 1 : name);
     if (si == NULL)
         goto fail;
 
@@ -1084,12 +1081,14 @@ init_library(soinfo *si)
 soinfo *find_library(const char *name)
 {
     soinfo *si;
+    const char *bname = strrchr(name, '/');
+    bname = bname ? bname + 1 : name;
 
     for(si = solist; si != 0; si = si->next){
-        if(!strcmp(name, si->name)) {
+        if(!strcmp(bname, si->name)) {
             if(si->flags & FLAG_ERROR) return 0;
             if(si->flags & FLAG_LINKED) return si;
-            DL_ERR("OOPS: %5d recursive link to '%s'\n", pid, si->name);
+            DL_ERR("OOPS: %5d recursive link to '%s'", pid, si->name);
             return NULL;
         }
     }
@@ -1121,7 +1120,7 @@ unsigned unload_library(soinfo *si)
                 if(lsi)
                     unload_library(lsi);
                 else
-                    DL_ERR("%5d could not unload '%s'\n",
+                    DL_ERR("%5d could not unload '%s'",
                           pid, si->strtab + d[1]);
             }
         }
@@ -1171,13 +1170,13 @@ static int reloc_library(soinfo *si, Elf32_Rel *rel, unsigned count)
             sym_name = (char *)(strtab + symtab[sym].st_name);
             s = _do_lookup(si, sym_name, &base);
             if(s == 0) {
-                DL_ERR("%5d cannot locate '%s'...\n", pid, sym_name);
+                DL_ERR("%5d cannot locate '%s'...", pid, sym_name);
                 return -1;
             }
 #if 0
             if((base == 0) && (si->base != 0)){
                     /* linking from libraries to main image is bad */
-                DL_ERR("%5d cannot locate '%s'...\n",
+                DL_ERR("%5d cannot locate '%s'...",
                        pid, strtab + symtab[sym].st_name);
                 return -1;
             }
@@ -1251,7 +1250,7 @@ static int reloc_library(soinfo *si, Elf32_Rel *rel, unsigned count)
             COUNT_RELOC(RELOC_RELATIVE);
             MARK(rel->r_offset);
             if(sym){
-                DL_ERR("%5d odd RELATIVE form...\n", pid);
+                DL_ERR("%5d odd RELATIVE form...", pid);
                 return -1;
             }
             TRACE_TYPE(RELO, "%5d RELO RELATIVE %08x <- +%08x\n", pid,
@@ -1292,7 +1291,7 @@ static int reloc_library(soinfo *si, Elf32_Rel *rel, unsigned count)
 #endif /* ANDROID_ARM_LINKER */
 
         default:
-            DL_ERR("%5d unknown reloc type %d @ %p (%d)\n",
+            DL_ERR("%5d unknown reloc type %d @ %p (%d)",
                   pid, type, rel, (int) (rel - start));
             return -1;
         }
@@ -1350,7 +1349,7 @@ static void call_constructors(soinfo *si)
     } else {
         if (si->preinit_array) {
             DL_ERR("%5d Shared library '%s' has a preinit_array table @ 0x%08x."
-                   " This is INVALID.\n", pid, si->name,
+                   " This is INVALID.", pid, si->name,
                    (unsigned)si->preinit_array);
         }
     }
@@ -1397,7 +1396,7 @@ static int nullify_closed_stdio (void)
 
     dev_null = open("/dev/null", O_RDWR);
     if (dev_null < 0) {
-        DL_ERR("Cannot open /dev/null.\n");
+        DL_ERR("Cannot open /dev/null.");
         return -1;
     }
     TRACE("[ %5d Opened /dev/null file-descriptor=%d]\n", pid, dev_null);
@@ -1423,7 +1422,7 @@ static int nullify_closed_stdio (void)
         /* The only error we allow is that the file descriptor does not
            exist, in which case we dup /dev/null to it. */
         if (errno != EBADF) {
-            DL_ERR("nullify_stdio: unhandled error %s\n", strerror(errno));
+            DL_ERR("nullify_stdio: unhandled error %s", strerror(errno));
             return_value = -1;
             continue;
         }
@@ -1436,7 +1435,7 @@ static int nullify_closed_stdio (void)
         } while (status < 0 && errno == EINTR);
 
         if (status < 0) {
-            DL_ERR("nullify_stdio: dup2 error %s\n", strerror(errno));
+            DL_ERR("nullify_stdio: dup2 error %s", strerror(errno));
             return_value = -1;
             continue;
         }
@@ -1450,7 +1449,7 @@ static int nullify_closed_stdio (void)
         } while (status < 0 && errno == EINTR);
 
         if (status < 0) {
-            DL_ERR("nullify_stdio: close error %s\n", strerror(errno));
+            DL_ERR("nullify_stdio: close error %s", strerror(errno));
             return_value = -1;
         }
     }
@@ -1519,7 +1518,7 @@ static int link_image(soinfo *si, unsigned wr_offset)
             } else if (phdr->p_type == PT_DYNAMIC) {
                 if (si->dynamic != (unsigned *)-1) {
                     DL_ERR("%5d multiple PT_DYNAMIC segments found in '%s'. "
-                          "Segment at 0x%08x, previously one found at 0x%08x\n",
+                          "Segment at 0x%08x, previously one found at 0x%08x",
                           pid, si->name, si->base + phdr->p_vaddr,
                           (unsigned)si->dynamic);
                     goto fail;
@@ -1531,7 +1530,7 @@ static int link_image(soinfo *si, unsigned wr_offset)
     }
 
     if (si->dynamic == (unsigned *)-1) {
-        DL_ERR("%5d missing PT_DYNAMIC?!\n", pid);
+        DL_ERR("%5d missing PT_DYNAMIC?!", pid);
         goto fail;
     }
 
@@ -1555,7 +1554,7 @@ static int link_image(soinfo *si, unsigned wr_offset)
             break;
         case DT_PLTREL:
             if(*d != DT_REL) {
-                DL_ERR("DT_RELA not supported\n");
+                DL_ERR("DT_RELA not supported");
                 goto fail;
             }
             break;
@@ -1580,7 +1579,7 @@ static int link_image(soinfo *si, unsigned wr_offset)
             *d = (int) &_r_debug;
             break;
         case DT_RELA:
-            DL_ERR("%5d DT_RELA not supported\n", pid);
+            DL_ERR("%5d DT_RELA not supported", pid);
             goto fail;
         case DT_INIT:
             si->init_func = (void (*)(void))(si->base + *d);
@@ -1632,7 +1631,7 @@ static int link_image(soinfo *si, unsigned wr_offset)
            pid, si->base, si->strtab, si->symtab);
 
     if((si->strtab == 0) || (si->symtab == 0)) {
-        DL_ERR("%5d missing essential tables\n", pid);
+        DL_ERR("%5d missing essential tables", pid);
         goto fail;
     }
 
@@ -1642,7 +1641,7 @@ static int link_image(soinfo *si, unsigned wr_offset)
             soinfo *lsi = find_library(si->strtab + d[1]);
             if(lsi == 0) {
                 strlcpy(tmp_err_buf, linker_get_error(), sizeof(tmp_err_buf));
-                DL_ERR("%5d could not load needed library '%s' for '%s' (%s)\n",
+                DL_ERR("%5d could not load needed library '%s' for '%s' (%s)",
                        pid, si->strtab + d[1], si->name, tmp_err_buf);
                 goto fail;
             }
@@ -1751,6 +1750,11 @@ unsigned __linker_init(unsigned **elfdata)
     struct link_map * map;
     char *ldpath_env = NULL;
 
+    /* Setup a temporary TLS area that is used to get a working
+     * errno for system calls.
+     */
+    __set_tls(__tls_area);
+
     pid = getpid();
 
 #if TIMING
@@ -1758,8 +1762,15 @@ unsigned __linker_init(unsigned **elfdata)
     gettimeofday(&t0, 0);
 #endif
 
-    __set_tls(__tls_area);
-    ((unsigned *)__get_tls())[TLS_SLOT_THREAD_ID] = gettid();
+    /* NOTE: we store the elfdata pointer on a special location
+     *       of the temporary TLS area in order to pass it to
+     *       the C Library's runtime initializer.
+     *
+     *       The initializer must clear the slot and reset the TLS
+     *       to point to a different location to ensure that no other
+     *       shared library constructor can access it.
+     */
+    __tls_area[TLS_SLOT_BIONIC_PREINIT] = elfdata;
 
     debugger_init();
 
