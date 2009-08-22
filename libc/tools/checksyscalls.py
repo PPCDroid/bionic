@@ -71,6 +71,7 @@ re_nr_clock_line = re.compile( r"#define __NR_(\w*)\s*\(__NR_timer_create\+(\w*)
 re_arm_nr_line   = re.compile( r"#define __ARM_NR_(\w*)\s*\(__ARM_NR_BASE\+\s*(\w*)\)" )
 re_mips_line     = re.compile( r"#define __NR_(\w*)\s*\(__NR_Linux \+\s*(\w*)\)" )
 re_x86_line      = re.compile( r"#define __NR_(\w*)\s*([0-9]*)" )
+re_ppc_line      = re.compile( r"#define __NR_(\w*)\s*([0-9]*)" )
 
 # now read the Linux arm header
 def process_nr_line(line,dict):
@@ -116,6 +117,15 @@ def process_nr_line(line,dict):
             pass
         return
 
+    m = re_ppc_line.match(line)
+    if m:
+        # try block because the ARM header has some #define _NR_XXXXX  /* nothing */
+        try:
+            #print "%s = %s" % (m.group(1), m.group(2))
+            dict[m.group(1)] = int(m.group(2))
+        except:
+            pass
+        return
 
 def process_header(header_file,dict):
     fp = open(header_file)
@@ -129,7 +139,7 @@ def process_header(header_file,dict):
 arm_dict = {}
 x86_dict = {}
 mips_dict = {}
-
+ppc_dist = {}
 
 # remove trailing slash and '/include' from the linux_root, if any
 if linux_root[-1] == '/':
@@ -166,13 +176,21 @@ if not os.path.exists(mips_unistd):
     print "maybe using a different set of kernel headers might help"
     sys.exit(1)
 
+ppc_unistd = linux_root + "/include/asm-ppc/unistd.h"
+if not os.path.exists(ppc_unistd):
+    print "WEIRD: could not locate the PPC unistd.h header file"
+    print "tried searching in '%s'" % ppc_unistd
+    print "maybe using a different set of kernel headers might help"
+    sys.exit(1)
+
 process_header( linux_root+"/include/asm-arm/unistd.h", arm_dict )
 process_header( x86_unistd, x86_dict )
 process_header( mips_unistd, mips_dict )
+process_header( ppc_unistd, ppc_dict )
 
 # now perform the comparison
 errors = 0
-for sc in syscalls:
+for sc in syscalls["arm"]:
     sc_name = sc["name"]
     sc_id   = sc["id"]
     if sc_id >= 0:
@@ -183,15 +201,26 @@ for sc in syscalls:
             print "arm syscall %s should be %d instead of %d !!" % (sc_name, arm_dict[sc_name], sc_id)
             errors += 1
 
-for sc in syscalls:
+for sc in syscalls["x86"]:
     sc_name = sc["name"]
-    sc_id2  = sc["id2"]
-    if sc_id2 >= 0:
+    sc_id  = sc["id"]
+    if sc_id >= 0:
         if not x86_dict.has_key(sc_name):
             print "x86 syscall %s not defined !!" % sc_name
             errors += 1
-        elif x86_dict[sc_name] != sc_id2:
-            print "x86 syscall %s should be %d instead of %d !!" % (sc_name, x86_dict[sc_name], sc_id2)
+        elif x86_dict[sc_name] != sc_id:
+            print "x86 syscall %s should be %d instead of %d !!" % (sc_name, x86_dict[sc_name], sc_id)
+            errors += 1
+
+for sc in syscalls["ppc"]:
+    sc_name = sc["name"]
+    sc_id  = sc["id"]
+    if sc_id >= 0:
+        if not ppc_dict.has_key(sc_name):
+            print "ppc syscall %s not defined !!" % sc_name
+            errors += 1
+        elif ppc_dict[sc_name] != sc_id:
+            print "ppc syscall %s should be %d instead of %d !!" % (sc_name, ppc_dict[sc_name], sc_id)
             errors += 1
 
 for sc in syscalls:

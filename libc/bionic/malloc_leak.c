@@ -555,6 +555,7 @@ static void assert_valid_malloc_pointer(void* mem)
     }
 }
 
+#ifndef __powerpc__
 /* Check that a given address corresponds to a guarded block,
  * and returns its original allocation size in '*allocated'.
  * 'func' is the capitalized name of the caller function.
@@ -601,6 +602,14 @@ static int chk_mem_check(void*       mem,
     *allocated = bytes;
     return 0;
 }
+#else
+static int chk_mem_check(void*       mem,
+                         size_t*     allocated,
+                         const char* func)
+{
+	/* compiler bug: bionic/libc/bionic/malloc_leak.c:580: internal compiler error: in move_insn, at haifa-sched.c:1963 */
+}
+#endif
 
 
 void* chk_malloc(size_t bytes)

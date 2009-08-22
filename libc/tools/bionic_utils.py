@@ -1,10 +1,10 @@
 # common python utility routines for the Bionic tool scripts
 
-import sys, os, commands, string
+import sys, os, commands, string, re
 
 # support Bionic architectures, add new ones as appropriate
 #
-bionic_archs = [ "arm", "x86" , "mips" ]
+bionic_archs = [ "arm", "x86", "mips", "ppc" ]
 
 # basic debugging trace support
 # call D_setlevel to set the verbosity level
@@ -135,11 +135,11 @@ class SysCallsTxtParser:
     def E(msg):
         print "%d: %s" % (self.lineno, msg)
 
-    def parse_line(self, line):
+    def parse_line(self, line, arch):
         """ parse a syscall spec line.
 
         line processing, format is
-           return type    func_name[:syscall_name[:call_id]] ( [paramlist] )   (syscall_number[,syscall_number_x86[,syscall_mips]])|stub
+           return type    func_name[:syscall_name[:call_id]] ( [paramlist] )   (syscall_number[,syscall_number_x86[,syscall_mips[,syscall_ppc]]])|stub
         """
         pos_lparen = line.find('(')
         E          = self.E
@@ -190,47 +190,90 @@ class SysCallsTxtParser:
             syscall_params = []
             params         = "void"
 
+        ids = []
+        archs = []
+        expls = []
+
         number = line[pos_rparen+1:].strip()
         if number == "stub":
             syscall_id  = -1
-            syscall_id2 = -1
-            syscall_id3 = -1
+            syscall_common = True
         else:
             try:
                 if number[0] == '#':
                     number = number[1:].strip()
                 numbers = string.split(number,',')
-                syscall_id  = int(numbers[0])
-                syscall_id2 = syscall_id
-                syscall_id3 = syscall_id
-                if len(numbers) > 1:
-                    syscall_id2 = int(numbers[1])
-                if len(numbers) > 2:
-                    syscall_id3 = int(numbers[2])
+
+                ii = 0
+                for tt in numbers:
+                    pos_arch = tt.find(':')
+                    if pos_arch < 0:
+                        # iarch is the implied by position arch
+                        if ii >= len(bionic_archs):
+                            iarch = ""
+                        else:
+                            iarch = bionic_archs[ii]
+                        id = int(tt)
+                        explicit = False
+                        ii = ii + 1
+                    else:
+                        iarch = tt[pos_arch+1:]
+                        id = int(tt[:pos_arch])
+                        explicit = True
+
+                    ids.append(id)
+                    archs.append(iarch)
+                    expls.append(explicit)
+
+                # single entry & implicit? matches everything
+                if len(ids) == 1 and expls[0] == False:
+                    syscall_id = ids[0]
+                    syscall_common = True
+                else:
+                    syscall_id = -1
+                    syscall_common = False
+
+                    # always use the most specific match
+                    for ii in range(len(ids)):
+                        if expls[ii] and re.match(archs[ii], arch):
+                            syscall_id = ids[ii]
+                            break
+
+                    # no explicit match found, use implicit positional
+                    if syscall_id < 0:
+                        for ii in range(len(ids)):
+                            if re.match(archs[ii], arch):
+                                syscall_id = ids[ii]
+                                break
+
             except:
                 E("invalid syscall number in '%s'" % line)
                 return
 
+        # no match for this syscall (for this arch) (stub?)
+        if syscall_id < 0:
+            return;
+
+        print arch+":"+syscall_name, syscall_id
+
         t = { "id"     : syscall_id,
-              "id2"    : syscall_id2,
-              "id3"    : syscall_id3,
               "cid"    : call_id,
               "name"   : syscall_name,
               "func"   : syscall_func,
               "params" : syscall_params,
-              "decl"   : "%-15s  %s (%s);" % (return_type, syscall_func, params) }
-
+              "decl"   : "%-15s  %s (%s);" % (return_type, syscall_func, params),
+              "common" : syscall_common }
         self.syscalls.append(t)
 
-    def parse_file(self, file_path):
-        D2("parse_file: %s" % file_path)
+    def parse_file(self, file_path, arch):
+        D2("parse_file: %s arch=%s" % (file_path, arch))
         fp = open(file_path)
         for line in fp.xreadlines():
             self.lineno += 1
             line = line.strip()
             if not line: continue
             if line[0] == '#': continue
-            self.parse_line(line)
+            self.parse_line(line, arch)
 
         fp.close()
 

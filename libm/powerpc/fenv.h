@@ -71,7 +71,7 @@ typedef	__uint32_t	fexcept_t;
 #define	_ROUND_MASK	(FE_TONEAREST | FE_DOWNWARD | \
 			 FE_UPWARD | FE_TOWARDZERO)
 
-__BEGIN_DECLS
+/* __BEGIN_DECLS */
 
 /* Default floating-point environment */
 extern const fenv_t	__fe_dfl_env;
@@ -82,8 +82,13 @@ extern const fenv_t	__fe_dfl_env;
 #define	_ENABLE_MASK	((FE_DIVBYZERO | FE_INEXACT | FE_INVALID | \
 			 FE_OVERFLOW | FE_UNDERFLOW) >> _FPUSW_SHIFT)
 
+#ifdef	PPC_HARD_FLOAT
 #define	__mffs(__env)	__asm __volatile("mffs %0" : "=f" (*(__env)))
 #define	__mtfsf(__env)	__asm __volatile("mtfsf 255,%0" : : "f" (__env))
+#else
+#define	__mffs(__env)
+#define	__mtfsf(__env)
+#endif
 
 union __fpscr {
 	double __d;
@@ -258,6 +263,6 @@ fegetexcept(void)
 
 #endif /* __BSD_VISIBLE */
 
-__END_DECLS
+/* __END_DECLS */
 
 #endif	/* !_FENV_H_ */

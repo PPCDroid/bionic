@@ -43,7 +43,11 @@ else
     ifeq ($(TARGET_ARCH),mips)
       LOCAL_CFLAGS += -DANDROID_MIPS_LINKER
     else
-      $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+        ifeq ($(TARGET_ARCH),ppc)
+          LOCAL_CFLAGS += -DANDROID_PPC_LINKER
+        else
+          $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+        endif
     endif
   endif
 endif

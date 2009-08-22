@@ -7,7 +7,7 @@ from utils import *
 
 # the list of supported architectures
 #
-kernel_archs = [ 'arm', 'x86', 'mips' ]
+kernel_archs = [ 'arm', 'x86', 'mips', 'ppc' ]
 
 # the list of include directories that belong to the kernel
 # tree. used when looking for sources...
@@ -57,6 +57,12 @@ kernel_known_x86_statics = set(
         ]
     )
 
+kernel_known_ppc_statics = set(
+        [ "___arch__swab32",  # asm-powerpc/byteorder.h
+          "___arch__swab64",  # asm-powerpc/byteorder.h
+        ]
+    )
+
 kernel_known_generic_statics = set(
         [ "__invalid_size_argument_for_IOC",  # asm-generic/ioctl.h
           "__cmsg_nxthdr",                    # linux/socket.h
@@ -70,7 +76,8 @@ kernel_known_generic_statics = set(
 #
 kernel_known_statics = {
         "arm" : kernel_known_arm_statics,
-        "x86" : kernel_known_x86_statics
+        "x86" : kernel_known_x86_statics,
+        "ppc" : kernel_known_ppc_statics,
     }
 
 # this is a list of macros which we want to specifically exclude from

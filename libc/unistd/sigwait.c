@@ -53,7 +53,7 @@ int sigwait(const sigset_t *set, int *sig)
       sigset_t       dummy_sigset;
     } u;
 
-#ifdef __mips__
+#if defined(__mips__) || defined(__powerpc__)
     u.dummy_sigset = *set;
     for (;;)
     {

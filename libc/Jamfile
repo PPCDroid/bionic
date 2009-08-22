@@ -167,7 +167,7 @@ Debug "PREBUILT is" $(PREBUILT) ;
 
 # check architectures and setup toolchain variables
 #
-SUPPORTED_ARCHS = x86 arm ;
+SUPPORTED_ARCHS = x86 arm ppc;
 
 ARCH ?= $(SUPPORTED_ARCHS) ;
 
@@ -179,6 +179,7 @@ if ! $(ARCH) in $(SUPPORTED_ARCHS) {
 
 x86_TOOLSET_PREFIX ?= "" ;
 arm_TOOLSET_PREFIX ?= $(TOP)/prebuilt/Linux/toolchain-4.1.1/bin/arm-elf- ;
+ppc_TOOLSET_PREFIX ?= $(TOP)/prebuilt/linux-x86/toolchain/powerpc-linux-4.2.1/bin/powerpc-android-linux-gnuspe- ;
 
 for arch in $(ARCH) {
     CC_$(arch)  = $($(arch)_TOOLSET_PREFIX)gcc ;
@@ -191,6 +192,7 @@ for arch in $(ARCH) {
 BIONIC_SRC_SUBDIRS = string ;
 BIONIC_x86_SUBDIRS = ;
 BIONIC_arm_SUBDIRS = ;
+BIONIC_ppc_SUBDIRS = ;
 
 CFLAGS   = -O0 -g -W ;
 
@@ -361,6 +363,10 @@ INCLUDES_x86 = /usr/src/linux/include ;
 INCLUDES_arm = ../kernel_headers
                include/arch/arm
                include/bits32
+               ;
+
+INCLUDES_ppc = ../kernel_headers
+               include/arch/powerpc
                ;
 
 INCLUDES = include stdio string stdlib .

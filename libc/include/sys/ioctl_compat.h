@@ -89,11 +89,22 @@ struct sgttyb {
 # define OTIOCSETD	_IOW('t', 1, int)	/* set line discipline */
 #endif
 #define	TIOCHPCL	_IO('t', 2)		/* hang up on last close */
+
+#ifndef TIOCGETP
 #define	TIOCGETP	_IOR('t', 8,struct sgttyb)/* get parameters -- gtty */
+#endif
+#ifndef TIOCSETP
 #define	TIOCSETP	_IOW('t', 9,struct sgttyb)/* set parameters -- stty */
+#endif
+#ifndef TIOCSETN
 #define	TIOCSETN	_IOW('t',10,struct sgttyb)/* as above, but no flushtty*/
+#endif
+#ifndef TIOCSETC
 #define	TIOCSETC	_IOW('t',17,struct tchars)/* set special characters */
+#endif
+#ifndef TIOCGETC
 #define	TIOCGETC	_IOR('t',18,struct tchars)/* get special characters */
+#endif
 #if 0
 /* BUG: a bunch of these conflict with #defines in asm/termbits.h */
 #define		TANDEM		0x00000001	/* send stopc on out q full */
@@ -163,8 +174,12 @@ struct sgttyb {
 #define		LPENDIN		(PENDIN>>16)
 #define		LDECCTQ		(DECCTQ>>16)
 #define		LNOFLSH		(NOFLSH>>16)
+#ifndef TIOCSLTC
 #define	TIOCSLTC	_IOW('t',117,struct ltchars)/* set local special chars*/
+#endif
+#ifndef TIOCGLTC
 #define	TIOCGLTC	_IOR('t',116,struct ltchars)/* get local special chars*/
+#endif
 #define OTIOCCONS	_IO('t', 98)	/* for hp300 -- sans int arg */
 #define	OTTYDISC	0
 #define	NETLDISC	1

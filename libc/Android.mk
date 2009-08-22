@@ -368,7 +368,33 @@ libc_common_src_files += \
 # this is needed for static versions of libc
 libc_arch_static_src_files := \
         arch-mips/bionic/dl_iterate_phdr_static.c
+
+libc_arch_dynamic_src_files :=
 endif # mips
+
+ifeq ($(TARGET_ARCH),ppc)
+libc_common_src_files += \
+	string/memcmp.c \
+	string/strlen.c \
+	arch-ppc/bionic/__get_sp.S \
+	arch-ppc/bionic/__set_tls.c \
+	arch-ppc/bionic/atomics_ppc.S \
+	arch-ppc/bionic/clone.S \
+	arch-ppc/bionic/_exit_with_stack_teardown.S \
+	arch-ppc/bionic/setjmp.S \
+	arch-ppc/bionic/sigsetjmp.S \
+	arch-ppc/bionic/syscall.S \
+	arch-ppc/string/memset.c \
+	arch-ppc/string/memcpy.c \
+	bionic/pthread.c \
+	bionic/pthread-timers.c \
+	bionic/ptrace.c
+
+libc_arch_static_src_files := \
+        arch-ppc/bionic/dl_iterate_phdr_static.c
+
+libc_arch_dynamic_src_files :=
+endif # ppc
 
 # Define some common cflags
 # ========================================================
@@ -399,6 +425,10 @@ else # !arm
     ifeq ($(TARGET_ARCH),mips)
       libc_crt_target_cflags := $(MIPS_ENDIAN) \
                                 -I$(LOCAL_PATH)/kernel/arch-$(TARGET_ARCH)
+    else
+      ifeq ($(TARGET_ARCH),ppc)
+        libc_crt_target_cflags := -msoft-float
+      endif
     endif
   endif # x86
 endif # !arm
@@ -449,6 +479,22 @@ $(GEN): $(LOCAL_PATH)/arch-$(TARGET_ARCH)/bionic/crtend_so.S
 	$(TARGET_CC) $(crt_begin_end_so_target_cflags) -o $@ -c $<
 ALL_GENERATED_SOURCES += $(GEN)
 endif # TARGET_ARCH == mips
+
+
+ifeq ($(TARGET_ARCH),ppc)
+crt_begin_end_so_target_cflags := -I$(LOCAL_PATH)/kernel/arch-$(TARGET_ARCH)
+GEN := $(TARGET_OUT_STATIC_LIBRARIES)/crtbegin_so.o
+$(GEN): $(LOCAL_PATH)/arch-$(TARGET_ARCH)/bionic/crtbegin_so.S
+	@mkdir -p $(dir $@)
+	$(TARGET_CC) $(crt_begin_end_so_target_cflags) -o $@ -c $<
+ALL_GENERATED_SOURCES += $(GEN)
+
+GEN := $(TARGET_OUT_STATIC_LIBRARIES)/crtend_so.o
+$(GEN): $(LOCAL_PATH)/arch-$(TARGET_ARCH)/bionic/crtend_so.S
+	@mkdir -p $(dir $@)
+	$(TARGET_CC) $(crt_begin_end_so_target_cflags) -o $@ -c $<
+ALL_GENERATED_SOURCES += $(GEN)
+endif # TARGET_ARCH == ppc
 
 
 GEN := $(TARGET_OUT_STATIC_LIBRARIES)/crtbegin_static.o
@@ -542,6 +588,11 @@ LOCAL_WHOLE_STATIC_LIBRARIES := libc_common
 LOCAL_SYSTEM_SHARED_LIBRARIES :=
 
 include $(BUILD_STATIC_LIBRARY)
+
+ifeq ($(TARGET_ARCH),ppc)
+LOCAL_SRC_FILES += \
+	arch-ppc/bionic/dl_iterate_phdr_static.c
+endif # TARGET_ARCH == ppc
 
 
 # ========================================================

@@ -94,6 +94,13 @@ static const __get_tls_t* __get_tls = (const __get_tls_t *)0xffff0fe0;
 #else
 #  define __get_tls() ( *((volatile void **) 0xffff0ff0) )
 #endif
+#elif defined(__powerpc__)
+# define __get_tls() \
+	({ \
+		unsigned int _res; \
+		asm volatile ("mr %0,2" : "=r"(_res)); \
+		_res; \
+	})
 #else
 extern void*  __get_tls( void );
 #endif
