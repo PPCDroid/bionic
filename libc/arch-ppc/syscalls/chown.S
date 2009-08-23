@@ -8,7 +8,7 @@
     .align 4
 
 chown:
-    li  0, __NR_chown32
+    li  0, __NR_chown
     sc
     bnslr+
     b   __set_syscall_errno

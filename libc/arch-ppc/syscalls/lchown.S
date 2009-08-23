@@ -8,7 +8,7 @@
     .align 4
 
 lchown:
-    li  0, __NR_lchown32
+    li  0, __NR_lchown
     sc
     bnslr+
     b   __set_syscall_errno

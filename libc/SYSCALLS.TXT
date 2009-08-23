@@ -33,35 +33,35 @@ pid_t   _waitpid:waitpid (pid_t, int*, int, struct rusage*)   7:x86|mips|ppc
 int     waitid(int, pid_t, struct siginfo_t*, int,void*)          280:arm,284:x86,278:mips,272:ppc
 pid_t   __clone:clone(int (*fn)(void*), void *child_stack, int flags, void *arg)  120
 int     execve (const char*, char* const*, char* const*)  11
-int     setuid:setuid32 (uid_t)    213:arm|x86,23:ppc
-uid_t   getuid:getuid32 ()         199:arm|x86,24:ppc
-gid_t   getgid:getgid32 ()         200:arm|x86,47:ppc
-uid_t   geteuid:geteuid32 ()       201:arm|x86,49:ppc
-gid_t   getegid:getegid32 ()       202:arm|x86,50:ppc
-uid_t   getresuid:getresuid32 ()   209:arm|x86,165:ppc
-gid_t   getresgid:getresgid32 ()   211:arm|x86,170:ppc
-int     setuid:setuid (uid_t)    23:mips
-uid_t   getuid:getuid ()         24:mips
-gid_t   getgid:getgid ()         47:mips
-uid_t   geteuid:geteuid ()       49:mips
-gid_t   getegid:getegid ()       50:mips
-uid_t   getresuid:getresuid ()   186:mips
-gid_t   getresgid:getresgid ()   191:mips
+int     setuid:setuid32 (uid_t)    213:arm|x86
+uid_t   getuid:getuid32 ()         199:arm|x86
+gid_t   getgid:getgid32 ()         200:arm|x86
+uid_t   geteuid:geteuid32 ()       201:arm|x86
+gid_t   getegid:getegid32 ()       202:arm|x86
+uid_t   getresuid:getresuid32 ()   209:arm|x86
+gid_t   getresgid:getresgid32 ()   211:arm|x86
+int     setuid:setuid (uid_t)    23:mips|ppc
+uid_t   getuid:getuid ()         24:mips|ppc
+gid_t   getgid:getgid ()         47:mips|ppc
+uid_t   geteuid:geteuid ()       49:mips|ppc
+gid_t   getegid:getegid ()       50:mips|ppc
+uid_t   getresuid:getresuid ()   186:mips,165:ppc
+gid_t   getresgid:getresgid ()   191:mips,170:ppc
 pid_t   gettid()                   224:arm|x86,222:mips,207:ppc
-int     getgroups:getgroups32(int, gid_t *)    205:arm|x86,80:ppc
-int     getgroups:getgroups(int, gid_t *)    80:mips
+int     getgroups:getgroups32(int, gid_t *)    205:arm|x86
+int     getgroups:getgroups(int, gid_t *)    80:mips|ppc
 pid_t   getpgid(pid_t)             132
 pid_t   getppid()		   64
 pid_t   setsid()                   66
-int     setgid:setgid32(gid_t)     214:arm|x86,46:ppc
-int     setgid:setgid(gid_t)       46:mips
+int     setgid:setgid32(gid_t)     214:arm|x86
+int     setgid:setgid(gid_t)       46:mips|ppc
 int     seteuid:seteuid32(uid_t)   stub
-int     setreuid:setreuid32(uid_t, uid_t)   203:arm|x86,70:ppc
-int     setreuid:setreuid(uid_t, uid_t)   70:mips
-int     setresuid:setresuid32(uid_t, uid_t, uid_t)   208:arm|x86,164:ppc
-int     setresuid:setresuid(uid_t, uid_t, uid_t)     185:mips
-int     setresgid:setresgid32(gid_t, gid_t, gid_t)   210:arm|x86,169:ppc
-int     setresgid:setresgid(gid_t, gid_t, gid_t)     190:mips
+int     setreuid:setreuid32(uid_t, uid_t)   203:arm|x86
+int     setreuid:setreuid(uid_t, uid_t)   70:mips|ppc
+int     setresuid:setresuid32(uid_t, uid_t, uid_t)   208:arm|x86
+int     setresuid:setresuid(uid_t, uid_t, uid_t)     185:mips,164:ppc
+int     setresgid:setresgid32(gid_t, gid_t, gid_t)   210:arm|x86
+int     setresgid:setresgid(gid_t, gid_t, gid_t)     190:mips,169:ppc
 void*   __brk:brk(void*)           45
 # see comments in arch-arm/bionic/kill.S to understand why we don't generate an ARM stub for kill/tkill
 int     kill(pid_t, int)           37:x86|mips|ppc
@@ -75,15 +75,15 @@ int     setrlimit(int resource, const struct rlimit *rlp)  75
 int     getrlimit:ugetrlimit(int resource, struct rlimit *rlp)  191:arm|x86,190:ppc
 int     getrlimit:getrlimit(int resource, struct rlimit *rlp)  76:mips
 int     getrusage(int who, struct rusage*  r_usage)  77
-int     setgroups:setgroups32(int, const gid_t *)   206:arm|x86,81:ppc
-int     setgroups:setgroups(int, const gid_t *)   81:mips
+int     setgroups:setgroups32(int, const gid_t *)   206:arm|x86
+int     setgroups:setgroups(int, const gid_t *)   81:mips|ppc
 pid_t   getpgrp(void)  stub
 int     setpgid(pid_t, pid_t)  57
 pid_t   vfork(void)  190:arm,189:ppc
-int     setregid:setregid32(gid_t, gid_t)  204:arm|x86,71:ppc
-int     setregid:setregid(gid_t, gid_t)  71:mips
+int     setregid:setregid32(gid_t, gid_t)  204:arm|x86
+int     setregid:setregid(gid_t, gid_t)  71:mips|ppc
 int     chroot(const char *)  61
-int     prctl(int option, unsigned int arg2, unsigned int arg3, unsigned int arg4, unsigned int arg5)  172:arm|x86|ppc,192:mips
+int     prctl(int option, unsigned int arg2, unsigned int arg3, unsigned int arg4, unsigned int arg5)  172:arm|x86,171:ppc,192:mips
 int     capget(cap_user_header_t header, cap_user_data_t data) 184:arm|x86,204:mips,183:ppc
 int     capset(cap_user_header_t header, const cap_user_data_t data) 185:arm|x86,205:mips,184:ppc
 int     acct(const char*  filepath)  51
@@ -123,8 +123,8 @@ int         select:_newselect(int, struct fd_set *, struct fd_set *, struct fd_s
 int         ftruncate(int, off_t)  93
 int         getdents:getdents64(unsigned int, struct dirent *, unsigned int)   217:arm,220:x86,219:mips,202:ppc
 int         fsync(int)  118
-int         fchown:fchown32(int, uid_t, gid_t)  207:arm|x86,95:ppc
-int         fchown:fchown(int, uid_t, gid_t)  95:mips
+int         fchown:fchown32(int, uid_t, gid_t)  207:arm|x86
+int         fchown:fchown(int, uid_t, gid_t)  95:mips|ppc
 void        sync(void)  36
 int         __fcntl64:fcntl64(int, int, void *)  221:arm|x86,220:mips,204:ppc
 int         fstatfs:fstatfs64(int, size_t, struct statfs *)  267:arm,269:x86,256:mips,253:ppc
@@ -142,10 +142,10 @@ int     unlinkat (int, const char *, int)   328:arm,301:x86,294:mips,292:ppc
 int     chdir (const char*)              12
 int     mknod (const char*, mode_t, dev_t)  14
 int     chmod (const char*,mode_t)          15
-int     chown:chown32(const char *, uid_t, gid_t)  212:arm|x86,181:ppc
-int     lchown:lchown32 (const char*, uid_t, gid_t)  198:arm|x86,16:ppc
-int     chown:chown(const char *, uid_t, gid_t)  202:mips
-int     lchown:lchown (const char*, uid_t, gid_t)  16:mips
+int     chown:chown32(const char *, uid_t, gid_t)  212:arm|x86
+int     lchown:lchown32 (const char*, uid_t, gid_t)  198:arm|x86
+int     chown:chown(const char *, uid_t, gid_t)  202:mips,181:ppc
+int     lchown:lchown (const char*, uid_t, gid_t)  16:mips|ppc
 int     mount (const char*, const char*, const char*, unsigned long, const void*)  21
 int     umount(const char*)  stub
 int     umount2 (const char*, int)  52
@@ -246,7 +246,7 @@ int     delete_module(const char*, unsigned int)   129
 int     klogctl:syslog(int, char *, int)   103
 
 # futex
-int	futex(void *, int, int, void *, void *, int) 240:arm,240:x86,238:mips,241:ppc
+int	futex(void *, int, int, void *, void *, int) 240:arm|x86,238:mips,221:ppc
 
 # epoll
 int     epoll_create(int size)     250:arm,254:x86,248:mips,236:ppc

@@ -8,7 +8,7 @@
     .align 4
 
 setuid:
-    li  0, __NR_setuid32
+    li  0, __NR_setuid
     sc
     bnslr+
     b   __set_syscall_errno

@@ -8,7 +8,7 @@
     .align 4
 
 setgroups:
-    li  0, __NR_setgroups32
+    li  0, __NR_setgroups
     sc
     bnslr+
     b   __set_syscall_errno

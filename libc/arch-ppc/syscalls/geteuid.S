@@ -8,7 +8,7 @@
     .align 4
 
 geteuid:
-    li  0, __NR_geteuid32
+    li  0, __NR_geteuid
     sc
     bnslr+
     b   __set_syscall_errno

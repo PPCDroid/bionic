@@ -8,7 +8,7 @@
     .align 4
 
 fchown:
-    li  0, __NR_fchown32
+    li  0, __NR_fchown
     sc
     bnslr+
     b   __set_syscall_errno

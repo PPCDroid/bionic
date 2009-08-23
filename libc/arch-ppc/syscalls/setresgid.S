@@ -8,7 +8,7 @@
     .align 4
 
 setresgid:
-    li  0, __NR_setresgid32
+    li  0, __NR_setresgid
     sc
     bnslr+
     b   __set_syscall_errno

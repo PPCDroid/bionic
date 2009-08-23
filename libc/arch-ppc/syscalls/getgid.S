@@ -8,7 +8,7 @@
     .align 4
 
 getgid:
-    li  0, __NR_getgid32
+    li  0, __NR_getgid
     sc
     bnslr+
     b   __set_syscall_errno

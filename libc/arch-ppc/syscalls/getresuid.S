@@ -8,7 +8,7 @@
     .align 4
 
 getresuid:
-    li  0, __NR_getresuid32
+    li  0, __NR_getresuid
     sc
     bnslr+
     b   __set_syscall_errno
