@@ -31,7 +31,6 @@ print "bionic_root is %s" % bionic_root
 bionic_temp = "/tmp/bionic_gensyscalls/"
 
 # all architectures, update as you see fit
-all_archs = [ "arm", "x86", "mips", "ppc" ]
 arch_deftests = {
     "arm"  : "__arm__",
     "x86"  : "__i386__",
@@ -284,7 +283,7 @@ class State:
         self.other_files = []
         self.syscalls = {}
 
-        for arch in all_archs:
+        for arch in bionic_archs:
             self.syscalls[arch] = []
 
     def x86_genstub(self, fname, numparams, idname):
@@ -421,19 +420,6 @@ class State:
         result += ppc_call % t
         return result
 
-    def process_file(self,input):
-
-        # parse syscall.txt for every arch
-        for arch in all_archs:
-            D( "")
-            D( ">>> processing architecture "+arch)
-            parser = SysCallsTxtParser()
-            parser.parse_file(input, arch)
-            self.syscalls[arch] = parser.syscalls
-            parser = None
-    
-        return
-
     def gen_NR_syscall(self,fp,name,id):
         fp.write( "#define __NR_%-25s    (__NR_SYSCALL_BASE + %d)\n" % (name,id) )
 
@@ -471,7 +457,7 @@ class State:
                 gen_syscalls[sc_name] = True
 
         # arch specific syscalls
-        for arch in all_archs:
+        for arch in bionic_archs:
             fp.write( "\n#ifdef "+arch_deftests[arch]+"\n" );
 
             # ARM is special and is handled above.
@@ -510,7 +496,7 @@ class State:
                 gen_decls[sc_name] = True
 
         # arch specific syscalls are generated
-        for arch in all_archs:
+        for arch in bionic_archs:
             fp.write( "\n#ifdef "+arch_deftests[arch]+"\n" );
             for sc in self.syscalls[arch]:
                 sc_id  = sc["id"]
@@ -583,7 +569,7 @@ class State:
 
         bionic_root_len = len(bionic_root)
 
-        for arch in all_archs:
+        for arch in bionic_archs:
             arch_path = bionic_root + "arch-" + arch
             D( "scanning " + arch_path )
             files = glob.glob( arch_path + "/syscalls/*.S" )
@@ -597,7 +583,7 @@ class State:
             os.mkdir( bionic_temp )
 
 #        D( "p4 editing source files" )
-#        for arch in all_archs:
+#        for arch in bionic_archs:
 #            commands.getoutput( "p4 edit " + arch + "/syscalls/*.S " )
 #            commands.getoutput( "p4 edit " + arch + "/syscalls.mk" )
 #        commands.getoutput( "p4 edit " + bionic_root + "include/sys/linux-syscalls.h" )
@@ -608,7 +594,7 @@ class State:
         self.gen_linux_syscalls_h()
         self.gen_linux_unistd_h()
 
-        for arch in all_archs:
+        for arch in bionic_archs:
             D( "re-generating arch files for "+arch)
             self.gen_arch_syscalls_mk(arch)
             self.gen_syscall_stubs(arch)
@@ -651,5 +637,5 @@ class State:
 D_setlevel(1)
 
 state = State()
-state.process_file(bionic_root+"SYSCALLS.TXT")
+process_syscalls_file(state, bionic_root+"SYSCALLS.TXT")
 state.regenerate()

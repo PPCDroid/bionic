@@ -254,7 +254,7 @@ class SysCallsTxtParser:
         if syscall_id < 0:
             return;
 
-        print arch+":"+syscall_name, syscall_id
+        D("%s:%s %d" % (arch, syscall_name, syscall_id))
 
         t = { "id"     : syscall_id,
               "cid"    : call_id,
@@ -352,3 +352,14 @@ def cleanup_dir(path):
                 os.remove(os.path.join(root, name))
             for name in dirs:
                 os.rmdir(os.path.join(root, name))
+
+def process_syscalls_file(self,input):
+    # parse syscall.txt for every arch
+    for arch in bionic_archs:
+        D( "")
+        D( ">>> processing architecture "+arch)
+        parser = SysCallsTxtParser()
+        parser.parse_file(input, arch)
+        self.syscalls[arch] = parser.syscalls
+        parser = None
+    return
