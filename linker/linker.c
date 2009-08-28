@@ -1585,6 +1585,12 @@ static int link_image(soinfo *si, unsigned wr_offset)
 	case DT_MIPS_SYMTABNO:	/* Total number of symbol table entries */
 	    si->mips_symtabno = *d;
 	    break;
+
+	case DT_MIPS_RLD_MAP:
+	    // Set address RLD_MAP entry points to the addres of _r_debug for GDB
+	    if ( *d != 0 ) 
+	    	*((int *)*d) = (int) &_r_debug;
+	    break;
 #else
         case DT_DEBUG:
             // Set the DT_DEBUG entry to the addres of _r_debug for GDB
