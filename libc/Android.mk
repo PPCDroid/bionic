@@ -357,13 +357,13 @@ libc_common_src_files += \
 	arch-mips/bionic/vfork.S \
 	arch-mips/bionic/syscall.S \
 	arch-mips/string/bzero.S \
-	arch-mips/string/memset.c \
 	arch-mips/string/memcmp.c \
 	arch-mips/string/memcpy.S \
 	arch-mips/string/strlen.S \
 	bionic/pthread.c \
 	bionic/pthread-timers.c \
-	bionic/ptrace.c
+	bionic/ptrace.c \
+	string/memset.c
 
 # this is needed for static versions of libc
 libc_arch_static_src_files := \
@@ -374,7 +374,9 @@ endif # mips
 
 ifeq ($(TARGET_ARCH),ppc)
 libc_common_src_files += \
+	string/bzero.c \
 	string/memcmp.c \
+	string/memset.c \
 	string/strlen.c \
 	arch-ppc/bionic/__get_sp.S \
 	arch-ppc/bionic/__set_tls.c \
@@ -384,7 +386,6 @@ libc_common_src_files += \
 	arch-ppc/bionic/setjmp.S \
 	arch-ppc/bionic/sigsetjmp.S \
 	arch-ppc/bionic/syscall.S \
-	arch-ppc/string/memset.c \
 	arch-ppc/string/memcpy.c \
 	bionic/pthread.c \
 	bionic/pthread-timers.c \
