@@ -8,7 +8,8 @@ LOCAL_SRC_FILES:= \
 	rt.c \
 	dlfcn.c \
 	debugger.c \
-	ba.c
+	ba.c \
+    linker_printf.c
 
 ifeq ($(TARGET_ARCH),mips)
 LINKER_TEXT_BASE := 0x00000820

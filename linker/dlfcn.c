@@ -177,7 +177,8 @@ static Elf32_Sym libdl_symtab[] = {
       st_info: STB_GLOBAL << 4,
       st_shndx: 1,
     },
-#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_MIPS_LINKER)
+#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_MIPS_LINKER) || \
+    	defined(ANDROID_PPC_LINKER)
     { st_name: 29,
       st_value: (Elf32_Addr) &dl_iterate_phdr,
       st_info: STB_GLOBAL << 4,

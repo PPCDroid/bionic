@@ -29,7 +29,7 @@
 
 int __set_tls(void *ptr)
 {
-	/* XXX */
+	asm volatile ("mr 2,%0" : : "r"(ptr));
 	return 0;
 }
 

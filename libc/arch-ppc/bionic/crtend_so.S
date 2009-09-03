@@ -1,6 +1,10 @@
-.text
-.align 4
-.type __bionic_call_ctors, @function
+
+
+	.text
+	.align 4
+#if 0
+	.globl __CTOR_END___
+	.type __bionic_call_ctors, @function
 
 /*
  * The CTORS_LIST is marked by -1 (start) and 0 (end).
@@ -10,12 +14,13 @@
  * derived systems.
  */
 __bionic_call_ctors:
+#if 1	/* FUCK IT FOR NOW */
 	/* stack frame */
         mflr 0
 	stwu 1,-16(1)
 	stw 0,20(1)
 
-#ifdef __PIC__
+#if defined(__PIC__)
 	lwz	3,__CTOR_END___@got(31)
 #else
 	lis	3,__CTOR_END___@ha
@@ -39,7 +44,9 @@ __bionic_call_ctors:
 	lwz 0,20(1)
 	addi 1,1,16
 	mtlr 0
+#endif
 	blr
+#endif
 
 .section .data
 .align 4
@@ -49,13 +56,23 @@ __libc_stack_end:
 
 .section .init
 .align 4
+	mflr 0
+	stwu 1,-16(1)
+	stw 0,20(1)
+#if 0
  	bl __bionic_call_ctors
+#endif
+	lwz 0,20(1)
+	addi 1,1,16
+	mtlr 0
 	blr
 
 .section .ctors, "aw", @progbits
+#if 0
 .align 4
 .type __CTOR_END___, @object
 __CTOR_END___:
+#endif
 	.long 0
 
 .section .init_array, "aw"

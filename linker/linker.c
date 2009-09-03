@@ -90,7 +90,7 @@ static soinfo *sonext = &libdl_info;
 static char ldpaths_buf[LDPATH_BUFSIZE];
 static const char *ldpaths[LDPATH_MAX + 1];
 
-int debug_verbosity=100;
+int debug_verbosity=-1;
 int pid;
 
 #if STATS
@@ -345,7 +345,7 @@ _Unwind_Ptr dl_unwind_find_exidx(_Unwind_Ptr pc, int *pcount)
    *pcount = 0;
     return NULL;
 }
-#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_MIPS_LINKER)
+#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_MIPS_LINKER) || defined(ANDROID_PPC_LINKER)
 /* Here, we only have to provide a callback to iterate across all the
  * loaded libraries. gcc_eh does the rest. */
 int
@@ -376,7 +376,7 @@ static Elf32_Sym *_elf_lookup(soinfo *si, unsigned hash, const char *name)
     const char *strtab = si->strtab;
     unsigned n;
 
-    TRACE_TYPE(LOOKUP, "%5d SEARCH %s in %s@0x%08x %08x %d\n", pid,
+    TRACE_TYPE(LOOKUP, "%5d SEARCH '%s' in %s@0x%08x %08x %d\n", pid,
                name, si->name, si->base, hash, hash % si->nbucket);
     n = hash % si->nbucket;
 
@@ -478,7 +478,7 @@ static void dump(soinfo *si)
     unsigned n;
 
     for(n = 0; n < si->nchain; n++) {
-        TRACE("%5d %04d> %08x: %02x %04x %08x %08x %s\n", pid, n, s,
+        TRACE("%5d %04d> %p: %02x %04x %08x %08x %s\n", pid, n, s,
                s->st_info, s->st_shndx, s->st_value, s->st_size,
                si->strtab + s->st_name);
         s++;
@@ -1457,12 +1457,92 @@ static int nullify_closed_stdio (void)
     return return_value;
 }
 
+#ifdef LINKER_DEBUG
+
+struct dt_desc {
+	unsigned val;
+	const char *text;
+};
+
+#undef DT
+#define DT(x) { .val = DT_ ## x, .text = #x , }
+
+static const struct dt_desc dt_desc_tab[] = {
+	DT(NULL),
+	DT(NEEDED),
+	DT(PLTRELSZ),
+	DT(PLTGOT),
+	DT(HASH),
+	DT(STRTAB),
+	DT(SYMTAB),
+	DT(RELA),
+	DT(RELASZ),
+	DT(RELAENT),
+	DT(STRSZ),
+	DT(SYMENT),
+	DT(INIT),
+	DT(FINI),
+	DT(SONAME),
+	DT(RPATH),
+	DT(SYMBOLIC),
+	DT(REL),
+	DT(RELSZ),
+	DT(RELENT),
+	DT(PLTREL),
+	DT(DEBUG),
+	DT(TEXTREL),
+	DT(JMPREL),
+	DT(INIT_ARRAY),
+	DT(FINI_ARRAY),
+	DT(INIT_ARRAYSZ),
+	DT(FINI_ARRAYSZ),
+	DT(PREINIT_ARRAY),
+	DT(PREINIT_ARRAYSZ),
+#ifndef ANDROID_MIPS_LINKER
+	DT(DEBUG),
+#endif
+#ifdef ANDROID_MIPS_LINKER
+	DT(MIPS_LOCAL_GOTNO),
+	DT(MIPS_GOTSYM),
+	DT(MIPS_SYMTABNO),
+#endif
+#ifdef ANDROID_PPC_LINKER
+	DT(PPC_GOT),
+#endif
+};
+
+static const struct dt_desc *lookup_dt(unsigned dt_val)
+{
+	const struct dt_desc *dd;
+	unsigned int i;
+
+	for (dd = dt_desc_tab, i = 0;
+		i < sizeof(dt_desc_tab)/sizeof(dt_desc_tab[0]);
+		i++, dd++)
+		if (dt_val == dd->val)
+			return dd;
+
+	return NULL;
+}
+
+static void dump_dt(soinfo *si, unsigned *d)
+{
+	const struct dt_desc *dd;
+
+	dd = lookup_dt(d[0]);
+	if (dd != NULL)
+		DEBUG("%-20s 0x%x\n", dd->text, (unsigned int)d[1]);
+	else
+		DEBUG("*Uknown (0x%x) 0x%x\n", d[0], (unsigned int)d[1]);
+}
+
+#endif
+
 static int link_image(soinfo *si, unsigned wr_offset)
 {
     unsigned *d;
     Elf32_Phdr *phdr = si->phdr;
     int phnum = si->phnum;
-    extern int reloc_library(soinfo *si, Elf32_Rel *rel, unsigned count);
 
     INFO("[ %5d linking %s ]\n", pid, si->name);
     DEBUG("%5d si->base = 0x%08x si->flags = 0x%08x\n", pid,
@@ -1537,6 +1617,22 @@ static int link_image(soinfo *si, unsigned wr_offset)
 
     DEBUG("%5d dynamic = %p\n", pid, si->dynamic);
 
+#ifdef LINKER_DEBUG
+    /* extract useful information from dynamic section */
+    for(d = si->dynamic; *d; d += 2){
+	dump_dt(si, d);
+    }
+#endif
+
+    /* fill in with defaults */
+    si->rel_ent = sizeof(*si->rel);
+    si->rela_ent = sizeof(*si->rela);
+	si->sym_ent = sizeof(*si->symtab);
+
+	si->plt_type = ANDROID_LINKER_ARCH_DEFAULT_RELTYPE;
+	si->plt_rel_ent = si->plt_type == DT_REL ?
+			sizeof(*si->plt.rel) : sizeof(*si->plt.rela);
+
     /* extract useful information from dynamic section */
     for(d = si->dynamic; *d; d++){
         DEBUG("%5d d = %p, d[0] = 0x%08x d[1] = 0x%08x\n", pid, d, d[0], d[1]);
@@ -1553,27 +1649,44 @@ static int link_image(soinfo *si, unsigned wr_offset)
         case DT_SYMTAB:
             si->symtab = (Elf32_Sym *) (si->base + *d);
             break;
+	case DT_SYMENT:
+	    si->sym_ent = *d;
+	    break;
         case DT_PLTREL:
-            if(*d != DT_REL) {
-                DL_ERR("DT_RELA not supported");
+            if (*d != DT_REL && *d != DT_RELA) {
+                DL_ERR("Unknown PLTREL type (%d) not supported\n", *d);
                 goto fail;
             }
+			si->plt_type = *d;
             break;
         case DT_JMPREL:
-            si->plt_rel = (Elf32_Rel*) (si->base + *d);
+            si->plt.rel_any = (void *)(si->base + *d);
             break;
         case DT_PLTRELSZ:
-            si->plt_rel_count = *d / 8;
+            si->plt_rel_sz = *d;
             break;
         case DT_REL:
             si->rel = (Elf32_Rel*) (si->base + *d);
             break;
+        case DT_RELA:
+            si->rela = (Elf32_Rela*) (si->base + *d);
+	    break;
         case DT_RELSZ:
-            si->rel_count = *d / 8;
+            si->rel_sz = *d;
+            break;
+        case DT_RELASZ:
+            si->rela_sz = *d;
+            break;
+	case DT_RELENT:
+	    si->rel_ent = *d;
+	    break;
+	case DT_RELAENT:
+	    si->rela_ent = *d;
             break;
         case DT_PLTGOT:
             /* Save this in case we decide to do lazy binding. We don't yet. */
             si->plt_got = (unsigned *)(si->base + *d);
+	    DEBUG("*** GOT for '%s' -> %p\n", si->name, si->plt_got);
             break;
 #ifdef ANDROID_MIPS_LINKER
 	case DT_MIPS_LOCAL_GOTNO:  /* Save the number of local GOT entries */
@@ -1585,21 +1698,24 @@ static int link_image(soinfo *si, unsigned wr_offset)
 	case DT_MIPS_SYMTABNO:	/* Total number of symbol table entries */
 	    si->mips_symtabno = *d;
 	    break;
-
 	case DT_MIPS_RLD_MAP:
 	    // Set address RLD_MAP entry points to the addres of _r_debug for GDB
 	    if ( *d != 0 ) 
 	    	*((int *)*d) = (int) &_r_debug;
 	    break;
-#else
+#endif
+#ifdef ANDROID_PPC_LINKER
+	case DT_PPC_GOT:
+	    si->ppc_got = *d;
+	    break;
+#endif
+
+#if !defined(ANDROID_MIPS_LINKER)
         case DT_DEBUG:
             // Set the DT_DEBUG entry to the addres of _r_debug for GDB
             *d = (int) &_r_debug;
             break;
 #endif
-        case DT_RELA:
-            DL_ERR("%5d DT_RELA not supported", pid);
-            goto fail;
         case DT_INIT:
             si->init_func = (void (*)(void))(si->base + *d);
             DEBUG("%5d %s constructors (init func) found at %p\n",
@@ -1645,9 +1761,19 @@ static int link_image(soinfo *si, unsigned wr_offset)
             break;
         }
     }
+	if (si->plt_rel_sz > 0)
+		si->plt_rel_count = si->plt_rel_sz / si->plt_rel_ent;
+	if (si->rel_sz > 0)
+		si->rel_count = si->rel_sz / si->rel_ent;
+	if (si->rela_sz > 0)
+		si->rela_count = si->rela_sz / si->rela_ent;
 
     DEBUG("%5d si->base = 0x%08x, si->strtab = %p, si->symtab = %p\n", 
            pid, si->base, si->strtab, si->symtab);
+
+#ifdef LINKER_DEBUG
+	// dump(si);
+#endif
 
     if((si->strtab == 0) || (si->symtab == 0)) {
         DL_ERR("%5d missing essential tables", pid);
@@ -1668,21 +1794,35 @@ static int link_image(soinfo *si, unsigned wr_offset)
         }
     }
 
-    if(si->plt_rel) {
-        DEBUG("[ %5d relocating %s plt ]\n", pid, si->name );
-        if(reloc_library(si, si->plt_rel, si->plt_rel_count))
+#if defined(ANDROID_MIPS_LINKER) || defined(ANDROID_PPC_LINKER)
+	DEBUG("[ %5d setting up got in %s]\n", pid, si->name);
+    setup_got(si);
+#endif
+
+    DEBUG("[ %5d relocating %s plt]\n", pid, si->name );
+    if (reloc_library(si, si->plt_type, si->plt.rel_any, si->plt_rel_count))
+        goto fail;
+    DEBUG("%s:%d %s\n", __FILE__, __LINE__, __func__);
+
+    if (si->rel) {
+        DEBUG("[ %5d relocating %s REL]\n", pid, si->name );
+        if(reloc_library(si, DT_REL, si->rel, si->rel_count))
             goto fail;
     }
-    if(si->rel) {
-        DEBUG("[ %5d relocating %s ]\n", pid, si->name );
-        if(reloc_library(si, si->rel, si->rel_count))
+    DEBUG("%s:%d %s\n", __FILE__, __LINE__, __func__);
+    if (si->rela) {
+        DEBUG("[ %5d relocating %s RELA]\n", pid, si->name );
+        if(reloc_library(si, DT_RELA, si->rela, si->rela_count))
             goto fail;
     }
 
-#ifdef ANDROID_MIPS_LINKER 
+    DEBUG("%s:%d %s\n", __FILE__, __LINE__, __func__);
+#if defined(ANDROID_MIPS_LINKER) || defined(ANDROID_PPC_LINKER)
+	DEBUG("[ %5d processing got in %s]\n", pid, si->name);
     process_got(si);
 #endif
 
+    DEBUG("%s:%d %s\n", __FILE__, __LINE__, __func__);
     si->flags |= FLAG_LINKED;
     DEBUG("[ %5d finished linking %s ]\n", pid, si->name);
 
@@ -1866,7 +2006,7 @@ unsigned __linker_init(unsigned **elfdata)
     if (ldpath_env && getuid() == geteuid() && getgid() == getegid())
         parse_library_path(ldpath_env, ":");
 
-    if(link_image(si, 0)) {
+    if (link_image(si, 0)) {
         char errmsg[] = "CANNOT LINK EXECUTABLE\n";
         write(2, __linker_dl_err_buf, strlen(__linker_dl_err_buf));
         write(2, errmsg, sizeof(errmsg));

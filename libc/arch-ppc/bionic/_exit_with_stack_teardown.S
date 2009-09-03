@@ -27,10 +27,24 @@
  */
 #include <sys/linux-syscalls.h>
 
+	/* void _exit_with_stack_teardown(void * stackBase, int stackSize, int retCode) */
+
 	.text
 	.align 4
 
 	.globl _exit_with_stack_teardown
 	.type _exit_with_stack_teardown,@function
 _exit_with_stack_teardown:
-	blr
+	/* r3, r4 are already correct for the munmap call */
+	li 0, __NR_munmap
+	sc			/* stack is destroyed */
+
+	mr 3,5			/* move exit code to r3 */
+	li 0, __NR_exit
+	sc			/* exit */
+
+	/* exit should never return; but just in case cause a crash */
+	li 0, 0
+	lwz 0,0(0)		/* load from addr 0 */
+
+	.size _exit_with_stack_teardown,.-_exit_with_stack_teardown

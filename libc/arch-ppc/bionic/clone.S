@@ -37,5 +37,29 @@
 	.globl __pthread_clone
 	.type __pthread_clone,@function
 __pthread_clone:
-	blr
+	/* r3 is fn, r4 = tls, r5 = flags, r6 = arg */
+	stw	3,-4(4)	/* save fn */
+	stw	6,-8(4) /* save arg */
+
+	/* int sys_clone(unsigned long clone_flags (r3), unsigned long newsp (r4), 
+		 int __user *parent_tidptr (r5), int tls_val (r6), int *child_tidptr (r7), struct pt_regs *regs (r8))
+	*/
+	mr 3,5	/* r3=clone_flags */
+			/* r4=tls -> newsp */
+			/* r5=parent_tidptr (only referenced if (clone_flags & CLONE_PARENT_SETTID) != 0 */
+	li 0, __NR_clone
+	sc
+	bns+ 0f
+	b __set_syscall_errno
+0:	bnelr		/* parent returns here */
+	/* child */
+	lwz 3,-4(4)	/* r0 -> func */
+	mr 5, 4		/* r4 -> tls */
+	lwz 4,-8(4)	/* r3 -> arg */
+#ifdef __PIC__
+	b __thread_entry@plt
+#else
+	b __thread_entry
+#endif
+	.size __pthread_clone,.-__pthread_clone
 

@@ -69,14 +69,20 @@
  * ideal. They should probably be either uint32_t, Elf32_Addr, or unsigned
  * long.
  */
-int reloc_library(soinfo *si, Elf32_Rel *rel, unsigned count)
+int reloc_library(soinfo *si, unsigned reltype, void *rels, unsigned count)
 {
+    Elf32_Rel *rel = rels;
     Elf32_Sym *symtab = si->symtab;
     const char *strtab = si->strtab;
     Elf32_Sym *s;
     unsigned base;
     Elf32_Rel *start = rel;
     unsigned idx;
+
+    if (reltype != DT_REL) {
+        ERROR("%5d cannot relocate !DT_REL\n", pid);
+        return -1;
+    }
 
     for (idx = 0; idx < count; ++idx) {
         unsigned type = ELF32_R_TYPE(rel->r_info);

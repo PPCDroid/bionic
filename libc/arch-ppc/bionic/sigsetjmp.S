@@ -42,44 +42,35 @@
 	.globl sigsetjmp
 	.type sigsetjmp,@function
 sigsetjmp:
-	mr	6,3
-	or.	7,4,4
-	beq	1f
-	li	3,0			# SIG_BLOCK (different between linux)
-	li	4,0
-	li	5,0
-	li	0,__NR_sigprocmask
-	sc				# assume no error	XXX
-1:
-	mflr	11
-	mfcr	12
-	mr	10,1
-	mr	9,2
-	mr	8,3
-	stmw	7,0(6)
-	li	3,0
-	blr
+	cmpwi	4,0	# if zero, do not save/restore signal context
+	beq	0f
+#ifdef __PIC__
+	b setjmp@plt
+#else
+	b setmp
+#endif
+0:
+#ifdef __PIC__
+	b _setjmp@plt
+#else
+	b _setmp
+#endif
 	.size sigsetjmp,.-sigsetjmp
 
 	.globl siglongjmp
 	.type siglongjmp,@function
 siglongjmp:
-	lmw	7,0(3)
-	mr	6,4
-	mtlr	11
-	mtcr	12
-	mr	2,9
-	mr	1,10
-	or.	7,7,7
-	beq	1f
-	mr	4,8
-	li	3,2			# SIG_SETMASK
-	li	5,0
-	li	0,__NR_sigprocmask
-	sc				# assume no error	XXX
-1:
-	or.	3,6,6
-	bnelr
-	li	3,1
-	blr
+	cmpwi	4,0	# if zero, do not save/restore signal context
+	beq	0f
+#ifdef __PIC__
+	b longjmp@plt
+#else
+	b longmp
+#endif
+0:
+#ifdef __PIC__
+	b _longjmp@plt
+#else
+	b _longmp
+#endif
 	.size siglongjmp,.-siglongjmp

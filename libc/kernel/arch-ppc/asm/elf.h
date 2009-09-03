@@ -17,6 +17,13 @@
 #include <asm/cputable.h>
 #include <asm/auxvec.h>
 
+#define EF_PPC_EMB		0x80000000	/* embedded flag */
+#define EF_PPC_RELOCATABLE	0x00010000	/* -mrelocatable flag */
+#define EF_PPC_RELOCATABLE_LIB	0x00008000	/* -mrelocatable-lib flag */
+
+#define DT_PPC_GOT		(0x70000000 + 1)
+
+/* PowerPC relocations defined by the ABIs */
 #define R_PPC_NONE 0
 #define R_PPC_ADDR32 1  
 #define R_PPC_ADDR24 2  

@@ -30,16 +30,17 @@
 #define _LINKER_DEBUG_H_
 
 #include <stdio.h>
+#include <stdarg.h>
 
 /* WARNING: For linker debugging only.. Be careful not to leave  any of
  * this on when submitting back to repository */
-#define LINKER_DEBUG         0
-#define TRACE_DEBUG          0
-#define DO_TRACE_LOOKUP      0
-#define DO_TRACE_RELO        0
-#define TIMING               0
-#define STATS                0
-#define COUNT_PAGES          0
+#define LINKER_DEBUG         1
+#define TRACE_DEBUG          1
+#define DO_TRACE_LOOKUP      1
+#define DO_TRACE_RELO        1
+#define TIMING               1
+#define STATS                1
+#define COUNT_PAGES          1
 
 /*********************************************************************
  * You shouldn't need to modify anything below unless you are adding
@@ -55,15 +56,20 @@
 #define TRUE                 1
 #define FALSE                0
 
+/* minimal printf that can work anywhere in the boot sequence */
+int linker_printf(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
+int linker_vprintf(const char *fmt, va_list ap);
+
 /* Only use printf() during debugging.  We have seen occasional memory
  * corruption when the linker uses printf().
  */
 #if LINKER_DEBUG
 extern int debug_verbosity;
-#warning "*** LINKER IS USING printf(); DO NOT CHECK THIS IN ***"
+/* NOTE: linker_printf implemented; should be OK; removed warning */
+/* #warning "*** LINKER IS USING printf(); DO NOT CHECK THIS IN ***" */
 #define _PRINTVF(v,f,x...)                                                \
     do {                                                                  \
-        (debug_verbosity > (v)) && (printf(x), ((f) && fflush(stdout)));  \
+        (debug_verbosity > (v)) && (linker_printf(x), (f));  		  \
     } while (0)
 #else /* !LINKER_DEBUG */
 #define _PRINTVF(v,f,x...)   do {} while(0)

@@ -33,10 +33,13 @@
 
 _start:
 	mr	3,1	/* stack pointer is the first argument */
-	li	4,0	/* ? */
-	bl	__linker_init
+	li      0,0	/* create stack frame */
+	stwu    1,-16(1)
+	stw     0,0(1)
+	bl	__linker_init@local
 
 	/* linker init returns the _entry address in the main image */
+	addi	1,1,16
 	mtlr	3
 	blr
 
