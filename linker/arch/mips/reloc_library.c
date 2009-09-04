@@ -143,7 +143,7 @@ void process_got(soinfo *si)
     }
 }
 
-int reloc_library(soinfo *si, unsigned reltype, void *rel, unsigned count)
+int reloc_library(soinfo *si, unsigned reltype, void *rels, unsigned count)
 {
     Elf32_Rel *rel = rels;
     Elf32_Sym *symtab = si->symtab;

@@ -81,42 +81,7 @@
 
 static void putcharfd(char c, int fd)
 {
-#if defined(ANDROID_ARM_LINKER)
-#warning UNTESTED!!!
-    asm volatile (
-            "mov r0,%1          \n"
-            "ldr r1,=1          \n"
-            "ldr r2,%2          \n"
-            "stmfd sp!,{r4,r7}  \n"
-            "ldr r7, =%0        \n"
-            "swi #0             \n"
-            "ldmfd sp!,{r4,r7}  \n"
-            : : "I"(__NR_write), "r"(fd), "r"(&c) :
-            "r0", "r1", "r2", "r3", "cc");
-#elif defined(ANDROID_X86_LINKER)
-#warning UNTESTED!!!
-    asm volatile (
-            "mov %1, %ebx       \n"
-            "movl $1, %ecx      \n"
-            "mov %2, %edx       \n"
-            "movl $%0, %eax      \n"
-            "int $0x80          \n"
-            : : "I"(__NR_write), "g"(fd), "g"(&c) :
-            "eax", "ebx", "ecx", "edx", "cc");
-#elif defined(ANDROID_MIPS_LINKER)
-#warning UNTESTED!!!
-    asm volatile (
-            "move a0,%1         \n"
-            "li a1,1            \n"
-            "mov a2,%2          \n"
-            ".set noreorder     \n"
-            ".cpload t9         \n"
-            "li v0, %0          \n"
-            "syscall            \n"
-            ".set reorder       \n"
-            : : "I"(__NR_write), "r"(fd), "r"(&c) :
-            "v0", "a0", "a1", "a2", "t9", "cc");
-#elif defined(ANDROID_PPC_LINKER)
+#if defined(ANDROID_PPC_LINKER)
     asm volatile (
             "mr 3,%1    \n" /* r3 = fd */
             "mr 4,%2    \n" /* r4 = &b */
@@ -126,7 +91,7 @@ static void putcharfd(char c, int fd)
             : : "I"(__NR_write), "r"(fd), "r"(&c) :
             "0", "3", "4", "5", "cc");
 #else
-#warning Missing architecture linker putcharfd implementation
+    write(fd, &c, 1);
 #endif
 }
 

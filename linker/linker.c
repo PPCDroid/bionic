@@ -1794,7 +1794,7 @@ static int link_image(soinfo *si, unsigned wr_offset)
         }
     }
 
-#if defined(ANDROID_MIPS_LINKER) || defined(ANDROID_PPC_LINKER)
+#if defined(ANDROID_PPC_LINKER)
 	DEBUG("[ %5d setting up got in %s]\n", pid, si->name);
     setup_got(si);
 #endif
