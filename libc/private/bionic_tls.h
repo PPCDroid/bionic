@@ -99,7 +99,7 @@ static const __get_tls_t* __get_tls = (const __get_tls_t *)0xffff0fe0;
 	({ \
 		unsigned int _res; \
 		asm volatile ("mr %0,2" : "=r"(_res)); \
-		_res; \
+		(void *)_res; \
 	})
 #else
 extern void*  __get_tls( void );

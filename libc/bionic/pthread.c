@@ -178,12 +178,15 @@ void __thread_entry(int (*func)(void*), void *arg, void **tls)
     // Wait for our creating thread to release us. This lets it have time to
     // notify gdb about this thread before it starts doing anything.
     pthread_mutex_t * start_mutex = (pthread_mutex_t *)&tls[TLS_SLOT_SELF];
-    pthread_mutex_lock(start_mutex);
-    pthread_mutex_destroy(start_mutex);
 
     thrInfo = (pthread_internal_t *) tls[TLS_SLOT_THREAD_ID];
 
     __init_tls( tls, thrInfo );
+
+    /* NOTE: order of __init_tls changed; calling functions that can set errno
+     *  before __init_tls is performed can lead to very mysterious crashes */
+    pthread_mutex_lock(start_mutex);
+    pthread_mutex_destroy(start_mutex);
 
     pthread_exit( (void*)func(arg) );
 }

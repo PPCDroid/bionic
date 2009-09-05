@@ -47,15 +47,27 @@ __pthread_clone:
 	mr 3,5	/* r3=clone_flags */
 			/* r4=tls -> newsp */
 			/* r5=parent_tidptr (only referenced if (clone_flags & CLONE_PARENT_SETTID) != 0 */
+	li 6,0
+	li 7,0
+	li 8,0
+
 	li 0, __NR_clone
 	sc
 	bns+ 0f
 	b __set_syscall_errno
-0:	bnelr		/* parent returns here */
+0:	cmpwi 3,0	/* zero? */
+	bnelr		/* parent returns here */
 	/* child */
-	lwz 3,-4(4)	/* r0 -> func */
-	mr 5, 4		/* r4 -> tls */
-	lwz 4,-8(4)	/* r3 -> arg */
+	lwz 3,-4(1)	/* r0 -> func */
+	mr 5, 1		/* r4 -> tls */
+	lwz 4,-8(1)	/* r3 -> arg */
+
+	/* initial stack frame */
+	stwu	1,-16(1)	/* initial stack frame */
+	li	0,0		/* clear lr */
+	mtlr	0
+	stw	0,0(1)		/* save to stack frame */
+
 #ifdef __PIC__
 	b __thread_entry@plt
 #else
