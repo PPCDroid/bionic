@@ -181,12 +181,15 @@ void __thread_entry(int (*func)(void*), void *arg, void **tls)
 
     thrInfo = (pthread_internal_t *) tls[TLS_SLOT_THREAD_ID];
 
-    __init_tls( tls, thrInfo );
-
-    /* NOTE: order of __init_tls changed; calling functions that can set errno
+    /* NOTE: chahing the order of __init_tls can't work;
+     * calling functions that can set errno
      *  before __init_tls is performed can lead to very mysterious crashes */
+    __set_tls( (void*)tls );
+
     pthread_mutex_lock(start_mutex);
     pthread_mutex_destroy(start_mutex);
+
+    __init_tls( tls, thrInfo );
 
     pthread_exit( (void*)func(arg) );
 }

@@ -42,6 +42,9 @@ int __set_errno(int n)
 
 int __set_syscall_errno(int n)
 {
+#ifdef __powerpc__
+	n = -n;	/* yeah, temp */
+#endif
         /* some syscalls, mmap() for example, have valid return
         ** values that are "negative".  Since errno values are not
         ** greater than 131 on Linux, we will just consider 

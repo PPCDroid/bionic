@@ -224,17 +224,17 @@ static const struct reloc_desc *lookup_reloc(unsigned reloc_val)
 
 void dump_reloc_entry_a(soinfo *si, Elf32_Rela *rela)
 {
-        unsigned type = ELF32_R_TYPE(rela->r_info);
-        unsigned sym = ELF32_R_SYM(rela->r_info);
+    unsigned type = ELF32_R_TYPE(rela->r_info);
+    unsigned sym = ELF32_R_SYM(rela->r_info);
 	unsigned offset = rela->r_offset;
 	unsigned addend = rela->r_addend;
 	const struct reloc_desc *rd;
 
 	rd = lookup_reloc(type);
 	if (rd == NULL)
-	    DEBUG("*Unknown 0x%02x sym 0x%06x offset 0x%08x addend 0x%08x\n", type, sym, offset, addend);
+	    ERROR("*Unknown 0x%02x sym 0x%06x offset 0x%08x addend 0x%08x\n", type, sym, offset, addend);
 	else
-	    DEBUG("%-20s - sym 0x%06x offset 0x%08x addend 0x%08x\n", rd->text, sym, offset, addend);
+	    ERROR("%-20s - sym 0x%06x offset 0x%08x addend 0x%08x\n", rd->text, sym, offset, addend);
 }
 
 void dump_sym_entry(soinfo *si, Elf32_Sym *sym)
@@ -244,7 +244,7 @@ void dump_sym_entry(soinfo *si, Elf32_Sym *sym)
 
 	bind = ELF32_ST_BIND(sym->st_info);
 	type = ELF32_ST_TYPE(sym->st_info);
-    DEBUG("%d:%s 0x%08x (sz=%d info=0x%x other=0x%x) - bind=%x type=%x\n", idx, si->strtab + sym->st_name,
+    ERROR("%d:%s 0x%08x (sz=%d info=0x%x other=0x%x) - bind=%x type=%x\n", idx, si->strtab + sym->st_name,
 	    sym->st_value, sym->st_size, sym->st_info, sym->st_other, bind, type);
 }
 
@@ -272,11 +272,10 @@ void setup_got(soinfo *si)
     strtab = si->strtab;
     got = (unsigned *)(si->plt_got);
 
-	/* must have the got */
-	if (si->plt_got == NULL) {
-		ERROR("DT_PLTGOT not found\n");
+	/* must have the got to continue; */
+    /* (missing GOT means not referencing other modules' symbols) */
+	if (si->plt_got == NULL)
 		return;
-	}
 
 	si->pltresolve = si->plt_got;
 	si->pltcall = si->pltresolve + PLT_CALL_OFFSET;
@@ -332,24 +331,24 @@ int reloc_library(soinfo *si, unsigned int reltype, void *rels, unsigned count)
     Elf32_Rela *rela = rels;
     Elf32_Sym *symtab = si->symtab;
     const char *strtab = si->strtab;
-    Elf32_Sym *s, *st;
+    Elf32_Sym *s, *st, *scpy;
     unsigned base;
     unsigned *r_addr;
     Elf32_Rela *start;
     unsigned i, idx;
 	unsigned val;
 	unsigned target;
-    unsigned loff, ooff;
+    unsigned loff, ooff, loffcpy;
 
     if (reltype != DT_RELA) {
-        ERROR("%5d cannot relocate !DT_RELA\n", pid);
-                return -1;
-            }
+        ERROR("%5d cannot relocate !DT_RELA in '%s'\n", pid, si->name);
+        return -1;
+    }
 
     start = rela;
     loff = si->base;
 
-	DEBUG("%5d relocating %d entries\n", count);
+	DEBUG("%5d relocating %d entries\n", pid, count);
 
     for (i = 0; i < count; i++, rela++) {
         unsigned type, sym, reloc, sym_addr;
@@ -367,11 +366,6 @@ int reloc_library(soinfo *si, unsigned int reltype, void *rels, unsigned count)
 		r_addr = (unsigned *)(rela->r_offset + si->base);
         DEBUG("%5d Processing '%s' relocation at index %d\n", pid, si->name, i);
 
-#if defined(LINKER_DEBUG) && 0
-		dump_reloc_entry_a(si, rela);
-		dump_sym_entry(si, &symtab[sym]);
-#endif
-
         ooff = (unsigned)-1;
         st = NULL;
         /* no lookup */
@@ -380,10 +374,9 @@ int reloc_library(soinfo *si, unsigned int reltype, void *rels, unsigned count)
                         ELF32_ST_TYPE(s->st_info) == STT_SECTION))) {
             st = _do_lookup(si, sym_name, &base);
             if (st == NULL) {
-                DEBUG("\n\n");
                 dump_reloc_entry_a(si, rela);
                 dump_sym_entry(si, &symtab[sym]);
-                ERROR("%5d cannot locate '%s'...\n", pid, sym_name);
+                ERROR("%5d cannot locate '%s' in '%s'\n", pid, sym_name, si->name);
                 return -1;
             }
             COUNT_RELOC(RELOC_SYMBOL);
@@ -395,9 +388,9 @@ int reloc_library(soinfo *si, unsigned int reltype, void *rels, unsigned count)
 			    (ELF32_ST_TYPE(s->st_info) == STT_SECTION ||
 			    ELF32_ST_TYPE(s->st_info) == STT_NOTYPE) ) {
 				val = si->base + rela->r_addend;
-        } else {
-				val = si->base + st->st_value + rela->r_addend;
-        }
+            } else {
+                    val = si->base + st->st_value + rela->r_addend;
+            }
 
 			*r_addr = val;
 
@@ -408,7 +401,7 @@ int reloc_library(soinfo *si, unsigned int reltype, void *rels, unsigned count)
 			val = target - (unsigned)r_addr;
 
 			if (si->pltresolve == NULL) {
-				ERROR("%5d R_PPC_JMP_SLOT without plt_got (%s)\n", pid, si->name);
+				ERROR("%5d R_PPC_JMP_SLOT without plt_got in '%s'\n", pid, si->name);
 				return -1;
 			}
 
@@ -424,7 +417,7 @@ int reloc_library(soinfo *si, unsigned int reltype, void *rels, unsigned count)
 				} else {
 					r_addr[0] = LI_R11 | (idx * 4);
 					BR(r_addr[1], si->pltcall);
-            }
+                }
 
 				dcbf(&r_addr[0]);
 				dcbf(&r_addr[2]);
@@ -438,7 +431,7 @@ int reloc_library(soinfo *si, unsigned int reltype, void *rels, unsigned count)
 				 */
 				BR(r_addr[0], target);
 				dcbf(&r_addr[0]);
-	    }
+            }
             break;
 
 		case R_PPC_ADDR32:
@@ -459,9 +452,9 @@ int reloc_library(soinfo *si, unsigned int reltype, void *rels, unsigned count)
 			val = base + st->st_value + rela->r_addend - (unsigned)r_addr;
 
 			if (!B24_VALID_RANGE(val)){
-				ERROR("%5d R_PPC_REL24 invalid (%s)\n", pid, si->name);
-            return -1;
-        }
+				ERROR("%5d R_PPC_REL24 invalid in '%s'\n", pid, si->name);
+                return -1;
+            }
 			val &= ~0xfc000003;
 			val |= (*r_addr & 0xfc000003);
 			*r_addr = val;
@@ -472,23 +465,18 @@ int reloc_library(soinfo *si, unsigned int reltype, void *rels, unsigned count)
 			val = si->base + rela->r_addend;
 			*(unsigned short *)r_addr = (unsigned short)val;
 			dcbf(r_addr);
-
-            DEBUG("ADDR16_LO [%p] = 0x%04x\n", r_addr, *(unsigned short *)r_addr & 0xffff);
             break;
+
 		case R_PPC_ADDR16_HI:
 			val = si->base + rela->r_addend;
 			*(unsigned short *)r_addr = (unsigned short)(val >> 16);
 			dcbf(r_addr);
-
-            DEBUG("ADDR16_HI [%p] = 0x%04x\n", r_addr, *(unsigned short *)r_addr & 0xffff);
-
             break;
+
 		case R_PPC_ADDR16_HA:
 			val = si->base + rela->r_addend;
 			*(Elf32_Half *)r_addr = ((val + 0x8000) >> 16);
 			dcbf(r_addr);
-
-            DEBUG("ADDR16_HA [%p] = 0x%04x\n", r_addr, *(unsigned short *)r_addr & 0xffff);
             break;
 
 		case R_PPC_REL14_BRTAKEN:
@@ -497,64 +485,52 @@ int reloc_library(soinfo *si, unsigned int reltype, void *rels, unsigned count)
 		case R_PPC_REL14_BRNTAKEN:
             val = base + st->st_value + rela->r_addend - (unsigned)r_addr;
 			if (((val & 0xffff8000) != 0) && ((val & 0xffff8000) != 0xffff8000)) {
-				ERROR("%5d R_PPC_REL14 invalid (%s)\n", pid, si->name);
+				ERROR("%5d R_PPC_REL14 invalid in '%s'\n", pid, si->name);
                 return -1;
-    }
+            }
 			val &= ~0xffff0003;
 			val |= (*r_addr & 0xffff0003);
 			*r_addr = val;
 			dcbf(r_addr);
 			break;
 
-#if 0
 		case R_PPC_GLOB_DAT:
 			*r_addr = base + st->st_value + rela->r_addend;
 			break;
+
 		case R_PPC_COPY:
-		{
 			/*
 			 * we need to find a symbol, that is not in the current
 			 * object, start looking at the beginning of the list,
 			 * searching all objects but _not_ the current object,
 			 * first one found wins.
 			 */
-			const Elf32_Sym *cpysrc = NULL;
-			Elf32_Addr src_loff;
-			int size;
-
-			src_loff = 0;
-			src_loff = _dl_find_symbol(symn, &cpysrc,
-			    SYM_SEARCH_OTHER|SYM_WARNNOTFOUND| SYM_NOTPLT,
-			    s, object, NULL);
-			if (cpysrc != NULL) {
-				size = s->st_size;
-				if (s->st_size != cpysrc->st_size) {
-					DEBUG("symbols size differ [%s] \n", symn);
-					size = s->st_size < cpysrc->st_size ?
-					    s->st_size : cpysrc->st_size;
-				}
-				_dl_bcopy((void *)(src_loff + cpysrc->st_value),
-				    r_addr, size);
-			} else
-				fails++;
-		}
+            scpy = _do_lookup_non_local(si, sym_name, &base);
+			if (scpy == NULL) {
+                dump_reloc_entry_a(si, rela);
+                dump_sym_entry(si, &symtab[sym]);
+                ERROR("%5d cannot locate '%s' from '%s'\n", pid, sym_name, si->name);
+                return -1;
+            }
+            if (st->st_size != scpy->st_size) {
+                ERROR("%5d symbols size differ for %s in '%s'\n", pid, sym_name, si->name);
+                return -1;
+            }
+            memcpy(r_addr, (void *)base + scpy->st_value, scpy->st_size);
 			break;
-#endif
+
 		case R_PPC_NONE:
 			break;
 
 		default:
-            DEBUG("\n\n");
             dump_reloc_entry_a(si, rela);
             dump_sym_entry(si, &symtab[sym]);
-			DEBUG(" %s: unsupported relocation '%s' %d at %p\n",
+			ERROR("%5d: %s: unsupported relocation '%s' %d at %p\n", pid,
 			    si->name, sym_name,
 			    ELF32_R_TYPE(rela->r_info), r_addr );
             return -1;
 		}
 
     }
- 
-    DEBUG("%s:%d %s\n", __FILE__, __LINE__, __func__);
     return 0;
 }

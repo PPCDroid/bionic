@@ -183,6 +183,8 @@ extern Elf32_Sym *_do_lookup_in_so(soinfo *si, const char *name,
 							unsigned *elf_hash);
 extern Elf32_Sym * _do_lookup(soinfo *user_si, const char *name,
 							unsigned *base);
+extern Elf32_Sym * _do_lookup_non_local(soinfo *user_si, const char *name,
+							unsigned *base);
 
 #ifdef __mips__
 #define LIBBASE 0x40000000

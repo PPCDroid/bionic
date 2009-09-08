@@ -465,6 +465,36 @@ _do_lookup(soinfo *user_si, const char *name, unsigned *base)
     return 0;
 }
 
+Elf32_Sym *
+_do_lookup_non_local(soinfo *user_si, const char *name, unsigned *base)
+{
+    unsigned elf_hash = 0;
+    Elf32_Sym *s = NULL;
+    soinfo *si;
+
+    if (user_si == NULL)
+        return NULL;
+
+    for(si = solist; (s == NULL) && (si != NULL); si = si->next)
+    {
+        if((si->flags & FLAG_ERROR) || (si == user_si))
+            continue;
+        s = _do_lookup_in_so(si, name, &elf_hash);
+        if (s != NULL) {
+            *base = si->base;
+            break;
+        }
+    }
+
+    if (s != NULL) {
+        TRACE_TYPE(LOOKUP, "%5d %s s->st_value = 0x%08x, "
+                   "si->base = 0x%08x\n", pid, name, s->st_value, si->base);
+        return s;
+    }
+
+    return 0;
+}
+
 /* This is used by dl_sym() */
 Elf32_Sym *lookup(const char *name, unsigned *base)
 {
