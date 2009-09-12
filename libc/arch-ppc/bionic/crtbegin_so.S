@@ -21,9 +21,7 @@ __INIT_ARRAY__:
 __FINI_ARRAY__:
     .long -1
 
-.section .ctors, "aw"
-.align 4
-.type __CTOR_LIST__, @object
 .globl __CTOR_LIST__
+.section .ctors, "aw", @progbits
 __CTOR_LIST__:
-        .long -1
+.long -1

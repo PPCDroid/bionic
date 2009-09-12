@@ -2,8 +2,6 @@
 
 	.text
 	.align 4
-#if 0
-	.globl __CTOR_END___
 	.type __bionic_call_ctors, @function
 
 /*
@@ -14,39 +12,46 @@
  * derived systems.
  */
 __bionic_call_ctors:
-#if 1	/* FUCK IT FOR NOW */
 	/* stack frame */
-        mflr 0
-	stwu 1,-16(1)
+    mflr 0
+	stwu 1,-16(1)   /* make stack frame */
 	stw 0,20(1)
+    stw 29,8(1)     /* save 29 */
 
 #if defined(__PIC__)
-	lwz	3,__CTOR_END___@got(31)
+	lwz	29,__CTOR_LIST__@got(31)
 #else
-	lis	3,__CTOR_END___@ha
-	addi	3,3,__CTOR_END___@l
+	lis	29,__CTOR_LIST__@ha
+	addi 29,29,__CTOR_LIST__@l
 #endif
-
-	li	0,-1
+	lwz	3,0(29)
+	cmpwi 3,-1  /* if -1 not found end */
+	bne	1f
+2:  addi 29,29,4
+	lwz	3,0(29)
+	cmpwi 3,0  /* if 0 end of list */
+	bne	2b
 0:
 	/* now grab the next function pointer and check if its -1. */
 	/*   If not, call it, otherwise we're done. */
-	addi	3,3,-4
-	lwz	4,0(3)
-	cmpw	4,0
+	addi 29,29,-4
+	lwz	3,0(29)
+	cmpwi 3,-1  /* if -1 found end */
 	beq	1f
+    cmpwi 3,0   /* if 0 we screwed up */
+    beq 1f
 
 	/* call constructor */
-	mtlr	4
+	mtlr 3
 	blrl
-	b	0b
+	b 0b
 1:
+    lwz 29,8(1)     /* restore r29 */
 	lwz 0,20(1)
 	addi 1,1,16
 	mtlr 0
-#endif
 	blr
-#endif
+	.size __bionic_call_ctors,.-__bionic_call_ctors
 
 .section .data
 .align 4
@@ -54,29 +59,24 @@ __bionic_call_ctors:
 __libc_stack_end:
 	.long	0
 
-.section .init
-.align 4
-	mflr 0
-	stwu 1,-16(1)
-	stw 0,20(1)
-#if 0
- 	bl __bionic_call_ctors
-#endif
-	lwz 0,20(1)
-	addi 1,1,16
-	mtlr 0
-	blr
+    .section .init
+    mflr 0
+    stwu 1,-16(1)
+    stw 0,20(1)
+    bl __bionic_call_ctors
+    lwz 0,20(1)
+    addi 1,1,16
+    mtlr 0
+    blr
 
-.section .ctors, "aw", @progbits
-#if 0
-.align 4
-.type __CTOR_END___, @object
+	.section .init_array, "aw"
+	.long 0
+
+	.section .fini_array, "aw"
+	.long 0
+
+/*	.section .ctors, "aw", @progbits */
+/*	.type __CTOR_END___, @object */
+	.section .ctors, "aw"
 __CTOR_END___:
-#endif
-	.long 0
-
-.section .init_array, "aw"
-	.long 0
-
-.section .fini_array, "aw"
 	.long 0
