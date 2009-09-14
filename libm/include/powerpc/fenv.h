@@ -30,6 +30,7 @@
 #define	_FENV_H_
 
 #include <sys/_types.h>
+#include <sys/cdefs.h>
 
 typedef	__uint32_t	fenv_t;
 typedef	__uint32_t	fexcept_t;
