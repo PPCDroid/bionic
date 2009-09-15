@@ -86,6 +86,8 @@ setjmp:
 	/* TODO? should sigstack be checked and saved */
 
 	mr 3, 31	/* restore r3, r4 & r5 no need */
+	lwz 31, JMP_r31(3)
+
 	b 0f	/* skip saving already saved registers */
 
 _setjmp:
