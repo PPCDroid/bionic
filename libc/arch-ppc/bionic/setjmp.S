@@ -70,8 +70,6 @@
 setjmp:
 	/* save these */
 	stw 31, JMP_r31(3)
-	stw 30, JMP_r30(3)
-	stw 29, JMP_r29(3)
 	mflr 0
 	stw 0, JMP_lr(3)
 
@@ -89,11 +87,10 @@ setjmp:
 	lwz 31, JMP_r31(3)
 
 	b 0f	/* skip saving already saved registers */
+	.size setjmp,.-setjmp
 
 _setjmp:
 	stw 31, JMP_r31(3)
-	stw 30, JMP_r30(3)
-	stw 29, JMP_r29(3)
 	mflr 0
 	stw 0, JMP_lr(3)
 0:
@@ -114,6 +111,8 @@ _setjmp:
 	stw 26, JMP_r26(3)
 	stw 27, JMP_r27(3)
 	stw 28, JMP_r28(3)
+	stw 29, JMP_r29(3)
+	stw 30, JMP_r30(3)
 	/* cr, ctr, xer */
 	mfcr 0
 	stw 0, JMP_cr(3)
@@ -122,9 +121,10 @@ _setjmp:
 	mfxer 0
 	stw 0, JMP_xer(3)
 	/* f14-f31, fpscr */
+
 	li 3, 0
 	blr
-	.size setjmp,.-setjmp
+	.size _setjmp,.-_setjmp
 
 	.globl longjmp
 	.type longjmp,@function
