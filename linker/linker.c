@@ -627,6 +627,18 @@ verify_elf_object(void *base, const char *name)
     if (hdr->e_ident[EI_MAG3] != ELFMAG3) return -1;
 
     /* TODO: Should we verify anything else in the header? */
+#ifdef __powerpc__
+    if (hdr->e_machine != EM_PPC) return -1;
+#endif
+#ifdef __arm__
+    if (hdr->e_machine != EM_ARM) return -1;
+#endif
+#ifdef __mips__
+    if (hdr->e_machine != EM_MIPS) return -1;
+#endif
+#ifdef __i386__
+    if (hdr->e_machine != EM_386) return -1;
+#endif
 
     return 0;
 }
