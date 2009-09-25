@@ -41,6 +41,30 @@ __BEGIN_DECLS
  * Note: The kernel zero's the padded region because glibc might read them
  * in the hope that the kernel has stretched to using larger sizes.
  */
+
+#ifdef __powerpc__
+struct stat {
+ unsigned long long st_dev;
+ unsigned long long st_ino;
+ unsigned int st_mode;
+ unsigned int st_nlink;
+ unsigned int st_uid;
+ unsigned int st_gid;
+ unsigned long long st_rdev;
+ unsigned short __pad2;
+ long long st_size;
+ int st_blksize;
+ long long st_blocks;
+ int st_atime;
+ unsigned int st_atime_nsec;
+ int st_mtime;
+ unsigned int st_mtime_nsec;
+ int st_ctime;
+ unsigned int st_ctime_nsec;
+ unsigned int __unused4;
+ unsigned int __unused5;
+};
+#else
 struct stat {
     unsigned long long  st_dev;
     unsigned char       __pad0[4];
@@ -70,6 +94,7 @@ struct stat {
 
     unsigned long long  st_ino;
 };
+#endif
 
 /* For compatibility with GLibc, we provide macro aliases
  * for the non-Posix nano-seconds accessors.
