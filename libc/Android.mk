@@ -386,7 +386,7 @@ libc_common_src_files += \
 	arch-ppc/bionic/setjmp.S \
 	arch-ppc/bionic/sigsetjmp.S \
 	arch-ppc/bionic/syscall.S \
-	arch-ppc/string/memcpy.c \
+	arch-ppc/string/memcpy.S \
 	bionic/pthread.c \
 	bionic/pthread-timers.c \
 	bionic/ptrace.c
