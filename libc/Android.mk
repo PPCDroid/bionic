@@ -391,8 +391,7 @@ libc_common_src_files += \
 	bionic/pthread-timers.c \
 	bionic/ptrace.c
 
-libc_arch_static_src_files := \
-        arch-ppc/bionic/dl_iterate_phdr_static.c
+libc_arch_static_src_files :=
 
 libc_arch_dynamic_src_files :=
 endif # ppc

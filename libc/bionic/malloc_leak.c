@@ -608,6 +608,7 @@ static int chk_mem_check(void*       mem,
                          const char* func)
 {
 	/* compiler bug: bionic/libc/bionic/malloc_leak.c:580: internal compiler error: in move_insn, at haifa-sched.c:1963 */
+	return 0;
 }
 #endif
 
