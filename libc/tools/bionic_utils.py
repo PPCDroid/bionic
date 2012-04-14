@@ -4,7 +4,7 @@ import sys, os, commands, string
 
 # support Bionic architectures, add new ones as appropriate
 #
-bionic_archs = [ "arm", "x86" ]
+bionic_archs = [ "arm", "x86", "powerpc" ]
 
 # basic debugging trace support
 # call D_setlevel to set the verbosity level
@@ -221,6 +221,7 @@ class SysCallsTxtParser:
             syscall_id  = -1
             syscall_id2 = -1
             syscall_id3 = -1
+            syscall_id4 = -1
         else:
             try:
                 if number[0] == '#':
@@ -229,20 +230,26 @@ class SysCallsTxtParser:
                 syscall_id  = int(numbers[0])
                 syscall_id2 = syscall_id
                 syscall_id3 = syscall_id
+                syscall_id4 = syscall_id
                 if len(numbers) > 1:
                     syscall_id2 = int(numbers[1])
                     syscall_id3 = syscall_id2
+                    syscall_id4 = syscall_id2
                 if len(numbers) > 2:
                     syscall_id3 = int(numbers[2])
+                    syscall_id4 = syscall_id3
+                if len(numbers) > 3:
+                    syscall_id4 = int(numbers[3])
             except:
                 E("invalid syscall number in '%s'" % line)
                 return
 
-        print str(syscall_id) + ':' + str(syscall_id2) + ':' + str(syscall_id3)
+        print str(syscall_id) + ':' + str(syscall_id2) + ':' + str(syscall_id3) + ':' + str(syscall_id4)
 
         t = { "id"     : syscall_id,
               "id2"    : syscall_id2,
               "id3"    : syscall_id3,
+              "id4"    : syscall_id4,
               "cid"    : call_id,
               "name"   : syscall_name,
               "func"   : syscall_func,

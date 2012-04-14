@@ -112,6 +112,7 @@ def process_header(header_file,dict):
 
 arm_dict = {}
 x86_dict = {}
+powerpc_dict = {}
 
 
 # remove trailing slash and '/include' from the linux_root, if any
@@ -139,8 +140,15 @@ if not x86_unistd:
         print "maybe using a different set of kernel headers might help."
         sys.exit(1)
 
+powerpc_unistd = find_arch_header(linux_root, "powerpc", "unistd.h")
+if not powerpc_unistd:
+    print "WEIRD: Could not locate the PowerPC unistd.h kernel header file,"
+    print "maybe using a different set of kernel headers might help."
+    sys.exit(1)
+
 process_header( arm_unistd, arm_dict )
 process_header( x86_unistd, x86_dict )
+process_header( powerpc_unistd, powerpc_dict )
 
 # now perform the comparison
 errors = 0
