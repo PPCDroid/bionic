@@ -121,28 +121,25 @@ if linux_root[-1] == '/':
 if len(linux_root) > 8 and linux_root[-8:] == '/include':
     linux_root = linux_root[:-8]
 
-arm_unistd = linux_root + "/include/asm-arm/unistd.h"
-if not os.path.exists(arm_unistd):
-    print "WEIRD: could not locate the ARM unistd.h header file"
-    print "tried searching in '%s'" % arm_unistd
-    print "maybe using a different set of kernel headers might help"
+arm_unistd = find_arch_header(linux_root, "arm", "unistd.h")
+if not arm_unistd:
+    print "WEIRD: Could not locate the ARM unistd.h kernel header file,"
+    print "maybe using a different set of kernel headers might help."
     sys.exit(1)
 
 # on recent kernels, asm-i386 and asm-x64_64 have been merged into asm-x86
 # with two distinct unistd_32.h and unistd_64.h definition files.
 # take care of this here
 #
-x86_unistd = linux_root + "/include/asm-i386/unistd.h"
-if not os.path.exists(x86_unistd):
-    x86_unistd1 = x86_unistd
-    x86_unistd = linux_root + "/include/asm-x86/unistd_32.h"
-    if not os.path.exists(x86_unistd):
-        print "WEIRD: could not locate the i386/x86 unistd.h header file"
-        print "tried searching in '%s' and '%s'" % (x86_unistd1, x86_unistd)
-        print "maybe using a different set of kernel headers might help"
+x86_unistd = find_arch_header(linux_root, "i386", "unistd.h")
+if not x86_unistd:
+    x86_unistd = find_arch_header(linux_root, "x86", "unistd_32.h")
+    if not x86_unistd:
+        print "WEIRD: Could not locate the i386/x86 unistd.h header file,"
+        print "maybe using a different set of kernel headers might help."
         sys.exit(1)
 
-process_header( linux_root+"/include/asm-arm/unistd.h", arm_dict )
+process_header( arm_unistd, arm_dict )
 process_header( x86_unistd, x86_dict )
 
 # now perform the comparison

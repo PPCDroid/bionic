@@ -125,6 +125,32 @@ def find_kernel_headers():
     return None
 
 
+def find_arch_header(kernel_headers,arch,header):
+    # First, try in <root>/arch/<arm>/include/<header>
+    # corresponding to the location in the kernel source tree for
+    # certain architectures (e.g. arm).
+    path = "%s/arch/%s/include/asm/%s" % (kernel_headers, arch, header)
+    D("Probing for %s" % path)
+    if os.path.exists(path):
+        return path
+
+    # Try <root>/asm-<arch>/include/<header> corresponding to the location
+    # in the kernel source tree for other architectures (e.g. x86).
+    path = "%s/include/asm-%s/%s" % (kernel_headers, arch, header)
+    D("Probing for %s" % path)
+    if os.path.exists(path):
+        return path
+
+    # Otherwise, look under <root>/asm-<arch>/<header> corresponding
+    # the original kernel headers directory
+    path = "%s/asm-%s/%s" % (kernel_headers, arch, header)
+    D("Probing for %s" % path)
+    if os.path.exists(path):
+        return path
+
+
+    return None
+
 # parser for the SYSCALLS.TXT file
 #
 class SysCallsTxtParser:
