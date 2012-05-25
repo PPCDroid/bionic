@@ -449,8 +449,35 @@ libc_common_src_files += \
 libc_static_common_src_files += \
         bionic/pthread.c \
 
-endif # sh
+else # !sh
 
+ifeq ($(TARGET_ARCH),powerpc)
+libc_common_src_files += \
+	string/bcopy.c \
+	string/memcmp.c \
+	string/memmove.c \
+	string/memset.c \
+	string/strcmp.c \
+	string/strlen.c \
+	string/strncmp.c \
+	arch-powerpc/bionic/__get_sp.S \
+	arch-powerpc/bionic/__set_tls.c \
+	arch-powerpc/bionic/_exit_with_stack_teardown.S \
+	arch-powerpc/bionic/atomics_ppc.S \
+	arch-powerpc/bionic/clone.S \
+	arch-powerpc/bionic/memcpy.S \
+	arch-powerpc/bionic/setjmp.S \
+	arch-powerpc/bionic/sigsetjmp.S \
+	arch-powerpc/bionic/syscall.S \
+	bionic/pthread-rwlocks.c \
+	bionic/pthread-timers.c \
+	bionic/ptrace.c \
+
+libc_static_common_src_files += \
+        bionic/pthread.c \
+
+endif # powerpc
+endif # !sh
 endif # !x86
 endif # !arm
 
@@ -501,7 +528,12 @@ else # !arm
     # Enable recent IA friendly memory routines (such as for Atom)
     # These will not work on the earlier x86 machines
     libc_common_cflags += -mtune=i686 -DUSE_SSSE3 -DUSE_SSE2
-  endif # x86
+  else # !x86
+    ifeq ($(TARGET_ARCH),powerpc)
+      # This flag must be added for PowerPC targets, but not for ARM or x86
+      libc_crt_target_cflags := -m32
+    endif # powerpc
+  endif # !x86
 endif # !arm
 
 # Define ANDROID_SMP appropriately.
@@ -533,7 +565,7 @@ libc_common_c_includes := \
 # executables)
 # ==========================================================================
 
-ifneq ($(filter arm x86,$(TARGET_ARCH)),)
+ifneq ($(filter arm x86 powerpc,$(TARGET_ARCH)),)
 # ARM and x86 need crtbegin_so/crtend_so.
 #
 # For x86, the .init section must point to a function that calls all
@@ -705,6 +737,10 @@ include $(CLEAR_VARS)
 LOCAL_CFLAGS := \
 	$(libc_common_cflags) \
 	-DMALLOC_LEAK_CHECK
+
+ifeq ($(TARGET_ARCH),powerpc)
+	LOCAL_CFLAGS += -DHAVE_UNWIND_CONTEXT_STRUCT
+endif
 
 LOCAL_C_INCLUDES := $(libc_common_c_includes)
 

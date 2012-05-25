@@ -127,9 +127,16 @@ extern int __set_tls(void *ptr);
 #      define __get_tls() ( *((volatile void **) 0xffff0ff0) )
 #    endif
 #  endif /* !LIBC_STATIC */
+#elif defined(__powerpc__)
+# define __get_tls() \
+	({ \
+		unsigned int _res; \
+		asm volatile ("mr %0,2" : "=r"(_res)); \
+		(void *)_res; \
+	})
 #else /* !ARM */
 extern void*  __get_tls( void );
-#endif /* !ARM */
+#endif
 
 /* return the stack base and size, used by our malloc debugger */
 extern void*  __get_stack_base(int  *p_stack_size);
