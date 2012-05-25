@@ -92,8 +92,8 @@ sysconf( int  name )
 #endif
     case _SC_CHILD_MAX:         return CHILD_MAX;
     case _SC_CLK_TCK:           return SYSTEM_CLK_TCK;
-#ifdef _POSIX2_COLL_WEIGHTS_MASK
-    case _SC_COLL_WEIGHTS_MAX:  return _POSIX2_COLL_WEIGHTS_MASK;
+#ifdef _POSIX2_COLL_WEIGHTS_MAX
+    case _SC_COLL_WEIGHTS_MAX:  return _POSIX2_COLL_WEIGHTS_MAX;
 #endif
 #ifdef _POSIX2_EXPR_NEST_MAX
     case _SC_EXPR_NEST_MAX:    return _POSIX2_EXPR_NEST_MAX;
@@ -123,7 +123,7 @@ sysconf( int  name )
 #ifdef _POSIX_VERSION
     case _SC_VERSION:           return _POSIX_VERSION;
 #endif
-    //case _SC_RE_DUP_<AX:        return ;
+    //case _SC_RE_DUP_MAX:        return ;
     case _SC_STREAM_MAX:        return FOPEN_MAX;
     //case _SC_TZNAME_MAX:        return ;
 #if _XOPEN_CRYPT
