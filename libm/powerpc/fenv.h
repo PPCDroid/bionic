@@ -71,7 +71,7 @@ typedef	__uint32_t	fexcept_t;
 #define	_ROUND_MASK	(FE_TONEAREST | FE_DOWNWARD | \
 			 FE_UPWARD | FE_TOWARDZERO)
 
-__BEGIN_DECLS
+/* __BEGIN_DECLS*/
 
 /* Default floating-point environment */
 extern const fenv_t	__fe_dfl_env;
@@ -258,6 +258,6 @@ fegetexcept(void)
 
 #endif /* __BSD_VISIBLE */
 
-__END_DECLS
+/* __END_DECLS */
 
 #endif	/* !_FENV_H_ */

@@ -180,7 +180,18 @@ else
 
       libm_common_includes = $(LOCAL_PATH)/sh
     else
-      $(error "Unknown architecture")
+      ifeq ($(TARGET_ARCH),powerpc)
+        libm_common_src_files += \
+              powerpc/fenv.c \
+              src/e_ldexpf.c \
+              src/s_scalbln.c \
+              src/s_scalbn.c \
+              src/s_scalbnf.c
+
+        libm_common_includes = $(LOCAL_PATH)/powerpc
+      else
+        $(error "Unknown architecture")
+      endif
     endif
   endif
 endif
