@@ -83,6 +83,8 @@ void __libc_preinit(void)
     malloc_debug_init();
 }
 
+void* __libc_stack_end;
+
 /* This function is called from the executable's _start entry point
  * (see arch-$ARCH/bionic/crtbegin_dynamic.S), which is itself
  * called by the dynamic linker after it has loaded all shared
@@ -99,6 +101,8 @@ __noreturn void __libc_init(uintptr_t *elfdata,
     int     argc = (int)*elfdata;
     char**  argv = (char**)(elfdata + 1);
     char**  envp = argv + argc + 1;
+
+    __libc_stack_end = (void*)(argv - 1);
 
     /* Several Linux ABIs don't pass the onexit pointer, and the ones that
      * do never use it.  Therefore, we ignore it.
