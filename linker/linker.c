@@ -375,7 +375,7 @@ _Unwind_Ptr dl_unwind_find_exidx(_Unwind_Ptr pc, int *pcount)
    *pcount = 0;
     return NULL;
 }
-#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_SH_LINKER)
+#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_SH_LINKER) || defined(ANDROID_PPC_LINKER)
 /* Here, we only have to provide a callback to iterate across all the
  * loaded libraries. gcc_eh does the rest. */
 int
@@ -445,7 +445,7 @@ static unsigned elfhash(const char *_name)
 }
 
 static Elf32_Sym *
-_do_lookup(soinfo *si, const char *name, unsigned *base)
+_do_lookup(soinfo *si, const char *name, unsigned *base, int non_local)
 {
     unsigned elf_hash = elfhash(name);
     Elf32_Sym *s;
@@ -462,9 +462,12 @@ _do_lookup(soinfo *si, const char *name, unsigned *base)
      * dynamic linking.  Some systems return the first definition found
      * and some the first non-weak definition.   This is system dependent.
      * Here we return the first definition found for simplicity.  */
-    s = _elf_lookup(si, elf_hash, name);
-    if(s != NULL)
-        goto done;
+    if (!non_local) {
+        s = _elf_lookup(si, elf_hash, name);
+        if(s != NULL)
+            goto done;
+    } else
+        s = NULL;
 
     /* Next, look for it in the preloads list */
     for(i = 0; preloads[i] != NULL; i++) {
@@ -1278,6 +1281,117 @@ unsigned unload_library(soinfo *si)
     return si->refcount;
 }
 
+#ifdef ANDROID_PPC_LINKER
+#define PLT_CALL_OFFSET		6
+#define PLT_INFO_OFFSET		10
+#define PLT_1STRELA_OFFSET	18
+
+#define ADDIS_R11_R11	0x3d6b0000
+#define ADDIS_R11_R0	0x3d600000
+#define ADDI_R11_R11	0x396b0000
+#define LWZ_R11_R11	0x816b0000
+#define LI_R11		0x39600000
+#define MCTR_R11	0x7d6903a6
+#define BCTR		0x4e800420
+
+#define BRi(from, to) \
+    do { \
+        int lval = (unsigned)(to) - (unsigned)(from); \
+        lval &= ~0xfc000000; \
+        lval |= 0x48000000; \
+        *(unsigned *)(from) = lval; \
+    } while (0)
+
+#define HA(x) (((unsigned)(x) >> 16) + (((unsigned)(x) & 0x00008000) >> 15))
+#define L(x) (((unsigned)x) & 0x0000ffff)
+
+#define B24_VALID_RANGE(x) \
+    ((((x) & 0xfe000000) == 0x00000000) || (((x) &  0xfe000000) == 0xfe000000))
+
+static inline void dcbf(unsigned long addr)
+{
+    asm volatile ("dcbst 0, %0\n\t"
+        "sync\n\t"
+        "icbi 0, %0\n\t"
+        "sync\n\t"
+        "isync"
+        : : "r" (addr) : "0", "memory");
+}
+
+/* TODO: don't use unsigned for addrs below. It works, but is not
+ * ideal. They should probably be either uint32_t, Elf32_Addr, or unsigned
+ * long.
+ */
+
+void setup_got(soinfo *si)
+{
+    Elf32_Sym *symtab = si->symtab;
+    const char *strtab;
+    Elf32_Sym *s, *s2;
+    char *sym_name;
+    unsigned idx, *got, base, base2;
+    extern unsigned ___resolve_stubs;
+
+    /* Relocate the GOT.
+    */
+    DEBUG("%5d Setup GOT for %s (%p)\n", pid, si->name, si->plt_got);
+
+    base = si->base;
+    strtab = si->strtab;
+    got = (unsigned *)(si->plt_got);
+
+    /* must have the got to continue; */
+    /* (missing GOT means not referencing other modules' symbols) */
+    if (si->plt_got == NULL)
+        return;
+
+    si->pltresolve = si->plt_got;
+    si->pltcall = si->pltresolve + PLT_CALL_OFFSET;
+    si->pltinfo = si->pltresolve + PLT_INFO_OFFSET;
+    si->first_rela = si->plt_got + PLT_1STRELA_OFFSET;
+
+    if (si->plt_rela_count >= (2 << 12))
+        si->plttable = (unsigned *) ((unsigned)si->first_rela + (2 * (2<<12) + 4 * (si->plt_rela_count - (2<<12))) * 4);
+    else
+        si->plttable = (unsigned *) ((unsigned)si->first_rela + (2 * si->plt_rela_count) * 4);
+
+    si->pltinfo[0] = (unsigned)si->plttable;
+
+    DEBUG("pltresolve = %p\n", si->pltresolve);
+    DEBUG("pltcall = %p\n", si->pltcall);
+    DEBUG("pltinfo = %p\n", si->pltinfo);
+    DEBUG("plttable = %p\n", si->plttable);
+    DEBUG("first_rela = %p\n", si->first_rela);
+    DEBUG("plt_rela_count = %d (%d)\n", si->plt_rela_count, (si->plttable - si->first_rela) / 2);
+
+    /* addis r11,r11,.PLTtable@ha*/
+    si->pltcall[0] = ADDIS_R11_R11 | HA(si->plttable);
+    /* lwz r11,plttable@l(r11) */
+    si->pltcall[1] = LWZ_R11_R11 | L(si->plttable);
+    si->pltcall[2] = MCTR_R11;    /* mtctr r11 */
+    si->pltcall[3] = BCTR;    /* bctr */
+    dcbf((unsigned long)&si->pltcall[0]);
+    dcbf((unsigned long)&si->pltcall[3]);
+}
+
+void process_got(soinfo *si)
+{
+    Elf32_Sym *symtab = si->symtab;
+    const char *strtab;
+    Elf32_Sym *s, *s2;
+    char *sym_name;
+    unsigned idx, *got, base, base2;
+    extern unsigned ___resolve_stubs;
+
+    /* Relocate the GOT.
+    */
+    DEBUG("%5d Processing GOT for %s (%p)\n", pid, si->name, si->plt_got);
+
+}
+
+#endif
+
+
 /* TODO: don't use unsigned for addrs below. It works, but is not
  * ideal. They should probably be either uint32_t, Elf32_Addr, or unsigned
  * long.
@@ -1302,7 +1416,7 @@ static int reloc_library(soinfo *si, Elf32_Rel *rel, unsigned count)
               si->name, idx);
         if(sym != 0) {
             sym_name = (char *)(strtab + symtab[sym].st_name);
-            s = _do_lookup(si, sym_name, &base);
+            s = _do_lookup(si, sym_name, &base, 0);
             if(s == NULL) {
                 /* We only allow an undefined symbol if this is a weak
                    reference..   */
@@ -1484,7 +1598,7 @@ static int reloc_library(soinfo *si, Elf32_Rel *rel, unsigned count)
     return 0;
 }
 
-#if defined(ANDROID_SH_LINKER)
+#if defined(ANDROID_LINKER_USE_RELA)
 static int reloc_library_a(soinfo *si, Elf32_Rela *rela, unsigned count)
 {
     Elf32_Sym *symtab = si->symtab;
@@ -1493,6 +1607,7 @@ static int reloc_library_a(soinfo *si, Elf32_Rela *rela, unsigned count)
     unsigned base;
     Elf32_Rela *start = rela;
     unsigned idx;
+    unsigned pltidx;
 
     for (idx = 0; idx < count; ++idx) {
         unsigned type = ELF32_R_TYPE(rela->r_info);
@@ -1500,12 +1615,17 @@ static int reloc_library_a(soinfo *si, Elf32_Rela *rela, unsigned count)
         unsigned reloc = (unsigned)(rela->r_offset + si->base);
         unsigned sym_addr = 0;
         char *sym_name = NULL;
+        unsigned val;
+        Elf32_Sym *s1, *scpy;
 
         DEBUG("%5d Processing '%s' relocation at index %d\n", pid,
               si->name, idx);
-        if(sym != 0) {
+        s1 = si->symtab + sym;
+        if(sym != 0 && !(ELF32_ST_BIND(s1->st_info) == STB_LOCAL &&
+                    (ELF32_ST_TYPE(s1->st_info) == STT_NOTYPE ||
+                        ELF32_ST_TYPE(s1->st_info) == STT_SECTION))) {
             sym_name = (char *)(strtab + symtab[sym].st_name);
-            s = _do_lookup(si, sym_name, &base);
+            s = _do_lookup(si, sym_name, &base, 0);
             if(s == 0) {
                 DL_ERR("%5d cannot locate '%s'...", pid, sym_name);
                 return -1;
@@ -1534,6 +1654,7 @@ static int reloc_library_a(soinfo *si, Elf32_Rela *rela, unsigned count)
  * different files.
  */
         switch(type){
+#if defined(ANDROID_SH_LINKER)
         case R_SH_JUMP_SLOT:
             COUNT_RELOC(RELOC_ABSOLUTE);
             MARK(rela->r_offset);
@@ -1566,9 +1687,137 @@ static int reloc_library_a(soinfo *si, Elf32_Rela *rela, unsigned count)
                        reloc, si->base);
             *((unsigned*)reloc) += si->base;
             break;
+#endif
+#if defined(ANDROID_PPC_LINKER)
+        case R_PPC_RELATIVE:
+            COUNT_RELOC(RELOC_RELATIVE);
+            MARK(rela->r_offset);
+            TRACE_TYPE(RELO, "%5d RELO RELATIVE %08x <- +%08x\n", pid,
+                       reloc, si->base);
+
+            if (s) {
+                val = si->base + s->st_value + rela->r_addend;
+            } else {
+                val = si->base + rela->r_addend;
+            }
+
+            *((unsigned*)reloc) = val;
+
+            break;
+        case R_PPC_JMP_SLOT:
+            COUNT_RELOC(RELOC_ABSOLUTE);
+            MARK(rela->r_offset);
+            TRACE_TYPE(RELO, "%5d RELO JMP_SLOT %08x <- %08x %08x %s\n", pid,
+                       reloc, sym_addr, rela->r_addend, sym_name);
+
+            if (si->pltresolve == NULL) {
+                ERROR("%5d R_PPC_JMP_SLOT without plt_got in '%s'\n", pid, si->name);
+                return -1;
+            }
+
+            unsigned target = sym_addr + rela->r_addend;
+            val = target - reloc;
+
+            if (!B24_VALID_RANGE(val)) {
+                /* if offset is > R_PPC_24 deal with it */
+                pltidx = (reloc - (unsigned)si->first_rela) >> 3;
+                DEBUG("pltidx %d\n", pltidx);
+
+                if (pltidx >= (2 << 12)) {
+                    /* addis r11,r11,.PLTtable@ha*/
+                    *(unsigned *)(reloc + 0) = ADDIS_R11_R0 | HA(pltidx*4);
+                    *(unsigned *)(reloc + 4) = ADDI_R11_R11 | L(pltidx*4);
+                    BRi(reloc + 8, si->pltcall);
+                } else {
+                    *(unsigned *)(reloc + 0) = LI_R11 | (pltidx * 4);
+                    BRi(reloc + 4, si->pltcall);
+                }
+
+                dcbf(reloc);
+                dcbf(reloc + 8);
+
+                DEBUG("reloc + 0: %08x\n", *(unsigned *)(reloc + 0));
+                DEBUG("reloc + 4: %08x\n", *(unsigned *)(reloc + 4));
+
+                si->plttable[pltidx] = target;
+
+                DEBUG("reloc + 0: %08x\n", *(unsigned *)(reloc + 0));
+                DEBUG("reloc + 4: %08x\n", *(unsigned *)(reloc + 4));
+
+            } else {
+                /* if the offset is small enough,
+                 * branch directly to the dest
+                 */
+                BRi(reloc, target);
+                dcbf(reloc);
+            }
+            break;
+
+        case R_PPC_ADDR32:
+            COUNT_RELOC(RELOC_ABSOLUTE);
+            MARK(rela->r_offset);
+            TRACE_TYPE(RELO, "%5d RELO ADDR32 %08x <- %08x %s\n", pid,
+                       reloc, sym_addr, sym_name);
+            *((unsigned*)reloc) = sym_addr + rela->r_addend;
+            break;
+
+        case R_PPC_ADDR16_LO:
+            COUNT_RELOC(RELOC_ABSOLUTE);
+            MARK(rela->r_offset);
+            TRACE_TYPE(RELO, "%5d RELO ADDR16_LO %08x <- %08x %s\n", pid,
+                       reloc, sym_addr, sym_name);
+
+            val = si->base + rela->r_addend;
+            *(unsigned short *)reloc = (unsigned short)val;
+            dcbf(reloc);
+            break;
+
+        case R_PPC_ADDR16_HA:
+            COUNT_RELOC(RELOC_ABSOLUTE);
+            MARK(rela->r_offset);
+            TRACE_TYPE(RELO, "%5d RELO ADDR16_HA %08x <- %08x %s\n", pid,
+                       reloc, sym_addr, sym_name);
+
+            val = si->base + rela->r_addend;
+            *(Elf32_Half *)reloc = ((val + 0x8000) >> 16);
+            dcbf(reloc);
+            break;
+
+        case R_PPC_GLOB_DAT:
+            COUNT_RELOC(RELOC_ABSOLUTE);
+            MARK(rela->r_offset);
+            TRACE_TYPE(RELO, "%5d RELO GLOB_DAT %08x <- %08x %s\n", pid,
+                       reloc, sym_addr, sym_name);
+
+            *(unsigned *)reloc = base + s->st_value + rela->r_addend;
+            break;
+
+        case R_PPC_COPY:
+            /*
+             * we need to find a symbol, that is not in the current
+             * object, start looking at the beginning of the list,
+             * searching all objects but _not_ the current object,
+             * first one found wins.
+             */
+            scpy = _do_lookup(si, sym_name, &base, 1);
+            if (scpy == NULL) {
+                ERROR("%5d cannot locate '%s' from '%s'\n", pid, sym_name, si->name);
+                return -1;
+            }
+            if (s->st_size != scpy->st_size) {
+                ERROR("%5d symbols size differ for %s in '%s'\n", pid, sym_name, si->name);
+                return -1;
+            }
+            COUNT_RELOC(RELOC_ABSOLUTE);
+            MARK(rela->r_offset);
+            TRACE_TYPE(RELO, "%5d RELO PPC_COPY %p %p %d\n", pid, (unsigned *)reloc, (void *)(base + scpy->st_value), scpy->st_size);
+            memcpy((unsigned *)reloc, (void *)(base + scpy->st_value), scpy->st_size);
+            break;
+
+#endif
 
         default:
-            DL_ERR("%5d unknown reloc type %d @ %p (%d)",
+            DL_ERR("%5d unknown relocA type %d @ %p (%d)",
                   pid, type, rela, (int) (rela - start));
             return -1;
         }
@@ -1576,8 +1825,7 @@ static int reloc_library_a(soinfo *si, Elf32_Rela *rela, unsigned count)
     }
     return 0;
 }
-#endif /* ANDROID_SH_LINKER */
-
+#endif /* ANDROID_LINKER_USE_RELA */
 
 /* Please read the "Initialization and Termination functions" functions.
  * of the linker design note in bionic/linker/README.TXT to understand
@@ -1830,15 +2078,15 @@ static int link_image(soinfo *si, unsigned wr_offset)
         case DT_SYMTAB:
             si->symtab = (Elf32_Sym *) (si->base + *d);
             break;
-#if !defined(ANDROID_SH_LINKER)
+#if !defined(ANDROID_LINKER_USE_RELA)
         case DT_PLTREL:
             if(*d != DT_REL) {
-                DL_ERR("DT_RELA not supported");
+                DL_ERR("DT_PLTREL/RELA not supported");
                 goto fail;
             }
             break;
 #endif
-#ifdef ANDROID_SH_LINKER
+#if defined (ANDROID_LINKER_USE_RELA)
         case DT_JMPREL:
             si->plt_rela = (Elf32_Rela*) (si->base + *d);
             break;
@@ -1859,7 +2107,7 @@ static int link_image(soinfo *si, unsigned wr_offset)
         case DT_RELSZ:
             si->rel_count = *d / 8;
             break;
-#ifdef ANDROID_SH_LINKER
+#if defined(ANDROID_LINKER_USE_RELA)
         case DT_RELASZ:
             si->rela_count = *d / sizeof(Elf32_Rela);
              break;
@@ -1872,7 +2120,7 @@ static int link_image(soinfo *si, unsigned wr_offset)
             // Set the DT_DEBUG entry to the addres of _r_debug for GDB
             *d = (int) &_r_debug;
             break;
-#ifdef ANDROID_SH_LINKER
+#if defined(ANDROID_LINKER_USE_RELA)
         case DT_RELA:
             si->rela = (Elf32_Rela *) (si->base + *d);
             break;
@@ -1974,6 +2222,11 @@ static int link_image(soinfo *si, unsigned wr_offset)
         }
     }
 
+#ifdef ANDROID_LINKER_USE_GOT
+    DEBUG("[ %5d setting up got in %s]\n", pid, si->name);
+    setup_got(si);
+#endif
+
     if(si->plt_rel) {
         DEBUG("[ %5d relocating %s plt ]\n", pid, si->name );
         if(reloc_library(si, si->plt_rel, si->plt_rel_count))
@@ -1985,18 +2238,18 @@ static int link_image(soinfo *si, unsigned wr_offset)
             goto fail;
     }
 
-#ifdef ANDROID_SH_LINKER
+#if defined(ANDROID_LINKER_USE_RELA)
     if(si->plt_rela) {
-        DEBUG("[ %5d relocating %s plt ]\n", pid, si->name );
+        DEBUG("[ %5d relocating %s plt rela ]\n", pid, si->name );
         if(reloc_library_a(si, si->plt_rela, si->plt_rela_count))
             goto fail;
     }
     if(si->rela) {
-        DEBUG("[ %5d relocating %s ]\n", pid, si->name );
+        DEBUG("[ %5d relocating rela %s ]\n", pid, si->name );
         if(reloc_library_a(si, si->rela, si->rela_count))
             goto fail;
     }
-#endif /* ANDROID_SH_LINKER */
+#endif /* ANDROID_LINKER_USE_RELA */
 
     si->flags |= FLAG_LINKED;
     DEBUG("[ %5d finished linking %s ]\n", pid, si->name);

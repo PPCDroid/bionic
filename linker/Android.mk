@@ -54,7 +54,11 @@ else
     ifeq ($(TARGET_ARCH),sh)
       LOCAL_CFLAGS += -DANDROID_SH_LINKER
     else
-      $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+      ifeq ($(TARGET_ARCH),powerpc)
+        LOCAL_CFLAGS += -DANDROID_PPC_LINKER
+      else
+        $(error Unsupported TARGET_ARCH $(TARGET_ARCH))
+      endif
     endif
   endif
 endif

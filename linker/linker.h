@@ -38,6 +38,14 @@
 #define PAGE_SIZE 4096
 #define PAGE_MASK 4095
 
+#if defined(ANDROID_SH_LINKER) || defined(ANDROID_PPC_LINKER)
+#define ANDROID_LINKER_USE_RELA
+#endif
+
+#if defined(ANDROID_PPC_LINKER)
+#define ANDROID_LINKER_USE_GOT
+#endif
+
 void debugger_init();
 const char *addr_to_name(unsigned addr);
 
@@ -115,6 +123,13 @@ struct soinfo
     unsigned *chain;
 
     unsigned *plt_got;
+#ifdef ANDROID_LINKER_USE_GOT
+    unsigned *pltresolve;
+    unsigned *pltcall;
+    unsigned *pltinfo;
+    unsigned *first_rela;
+    unsigned *plttable;
+#endif
 
     Elf32_Rel *plt_rel;
     unsigned plt_rel_count;
@@ -122,13 +137,13 @@ struct soinfo
     Elf32_Rel *rel;
     unsigned rel_count;
 
-#ifdef ANDROID_SH_LINKER
+#if defined(ANDROID_LINKER_USE_RELA)
     Elf32_Rela *plt_rela;
     unsigned plt_rela_count;
 
     Elf32_Rela *rela;
     unsigned rela_count;
-#endif /* ANDROID_SH_LINKER */
+#endif /* ANDROID_LINKER_USE_RELA */
 
     unsigned *preinit_array;
     unsigned preinit_array_count;
@@ -194,6 +209,18 @@ extern soinfo libdl_info;
 #define R_SH_JUMP_SLOT  164
 #define R_SH_RELATIVE   165
 
+#elif defined(ANROID_PPC_LINKER)
+
+/* PowerPC relocations defined by the ABIs */
+/* XXX don't know how many are used yet */
+#define R_PPC_ADDR32		1	/* 32bit absolute address */
+#define R_PPC_ADDR16_LO		4	/* lower 16bit of absolute address */
+#define R_PPC_ADDR16_HA		6	/* adjusted high 16bit */
+#define R_PPC_COPY		19
+#define R_PPC_GLOB_DAT		20
+#define R_PPC_JMP_SLOT		21
+#define R_PPC_RELATIVE		22
+
 #endif /* ANDROID_*_LINKER */
 
 
@@ -232,7 +259,7 @@ const char *linker_get_error(void);
 #ifdef ANDROID_ARM_LINKER 
 typedef long unsigned int *_Unwind_Ptr;
 _Unwind_Ptr dl_unwind_find_exidx(_Unwind_Ptr pc, int *pcount);
-#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_SH_LINKER)
+#elif defined(ANDROID_X86_LINKER) || defined(ANDROID_SH_LINKER) || defined(ANDROID_PPC_LINKER)
 int dl_iterate_phdr(int (*cb)(struct dl_phdr_info *, size_t, void *), void *);
 #endif
 
