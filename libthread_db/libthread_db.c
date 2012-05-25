@@ -99,6 +99,16 @@ _event_getmsg_helper(td_thrhandle_t const * handle, void * bkpt_addr)
         gEventMsgHandle.tid = gEventMsgHandle.pid;
         return 0x42;
     }
+#elif defined(__powerpc__)
+    pc = (void *)ptrace(PTRACE_PEEKUSR, handle->tid, (void *)128 /* ppc pc */, NULL);
+
+    if (pc == bkpt_addr) {
+        // The hook function takes the id of the new thread as it's first param,
+        // so grab it from r0.
+        gEventMsgHandle.pid = ptrace(PTRACE_PEEKUSR, handle->tid, (void *)12 /* r0 */, NULL);
+        gEventMsgHandle.tid = gEventMsgHandle.pid;
+        return 0x42;
+    }
 #else
     pc = (void *)ptrace(PTRACE_PEEKUSR, handle->tid, (void *)60 /* r15/pc */, NULL);
 
