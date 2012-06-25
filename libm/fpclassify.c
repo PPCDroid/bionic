@@ -27,7 +27,7 @@
  * $FreeBSD: src/lib/libc/gen/fpclassify.c,v 1.2 2005/02/06 03:23:31 das Exp $
  */
 
-#include <sys/endian.h>
+#include <endian.h>
 
 #include <math.h>
 #include <stdint.h>
