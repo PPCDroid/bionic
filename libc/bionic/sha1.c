@@ -22,6 +22,7 @@
 #include <assert.h>
 #include <sha1.h>
 #include <string.h>
+#include <endian.h>
 
 #if HAVE_NBTOOL_CONFIG_H
 #include "nbtool_config.h"
