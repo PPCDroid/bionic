@@ -28,7 +28,7 @@
 #ifndef _BYTESWAP_H_
 #define _BYTESWAP_H_
 
-#include <sys/endian.h>
+#include <endian.h>
 
 #define  bswap_16(x)   swap16(x)
 #define  bswap_32(x)   swap32(x)
