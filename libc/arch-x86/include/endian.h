@@ -65,6 +65,7 @@
 #endif	/* __GNUC__ */
 
 #define _BYTE_ORDER _LITTLE_ENDIAN
+#define ARCH_ENDIAN_INCLUDED
 #include <sys/endian.h>
 
 #endif /* _I386_ENDIAN_H_ */

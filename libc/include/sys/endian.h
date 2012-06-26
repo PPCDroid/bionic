@@ -39,6 +39,10 @@
 #include <sys/cdefs.h>
 #include <machine/_types.h>
 
+#ifndef ARCH_ENDIAN_INCLUDED
+#error <sys/endian.h> should not be included directly. Please use <endian.h> instead
+#endif
+
 #define _LITTLE_ENDIAN	1234
 #define _BIG_ENDIAN	4321
 #define _PDP_ENDIAN	3412

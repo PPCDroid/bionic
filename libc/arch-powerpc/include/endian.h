@@ -29,6 +29,7 @@
 
 #undef _BIG_ENDIAN	/* XXX - gcc may define _BIG_ENDIAN too */
 #define _BYTE_ORDER _BIG_ENDIAN
+#define ARCH_ENDIAN_INCLUDED
 #include <sys/endian.h>
 
 #define	__STRICT_ALIGNMENT

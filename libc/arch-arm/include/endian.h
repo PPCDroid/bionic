@@ -6,5 +6,6 @@
 #define _BYTE_ORDER _LITTLE_ENDIAN
 #endif
 #define	__STRICT_ALIGNMENT
+#define ARCH_ENDIAN_INCLUDED
 #include <sys/types.h>
 #include <sys/endian.h>
