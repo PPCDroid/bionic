@@ -28,6 +28,7 @@
 #define _POWERPC_ENDIAN_H_
 
 #undef _BIG_ENDIAN	/* XXX - gcc may define _BIG_ENDIAN too */
+#undef _BYTE_ORDER
 #define _BYTE_ORDER _BIG_ENDIAN
 #define ARCH_ENDIAN_INCLUDED
 #include <sys/endian.h>

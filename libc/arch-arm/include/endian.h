@@ -1,5 +1,6 @@
 /*	$OpenBSD: endian.h,v 1.3 2005/12/13 00:35:23 millert Exp $	*/
 
+#undef _BYTE_ORDER
 #ifdef __ARMEB__
 #define _BYTE_ORDER _BIG_ENDIAN
 #else

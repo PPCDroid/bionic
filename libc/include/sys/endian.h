@@ -51,6 +51,7 @@
 #define LITTLE_ENDIAN	_LITTLE_ENDIAN
 #define BIG_ENDIAN	_BIG_ENDIAN
 #define PDP_ENDIAN	_PDP_ENDIAN
+#undef BYTE_ORDER
 #define BYTE_ORDER	_BYTE_ORDER
 #endif
 
@@ -266,6 +267,7 @@ __END_DECLS
 #endif
 
 
+#undef __BYTE_ORDER
 #define  __BYTE_ORDER       _BYTE_ORDER
 #ifndef  __LITTLE_ENDIAN
 #define  __LITTLE_ENDIAN    _LITTLE_ENDIAN
